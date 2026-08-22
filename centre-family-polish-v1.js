@@ -1,3 +1,7 @@
+import './source-upload-v1.js';
+import './sibling-band-v1.js';
+import './editor-evidence-v1.js';
+
 const treeCanvas = document.getElementById('treeCanvas');
 
 function ensureCentreClip(svg) {
