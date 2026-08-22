@@ -1,3 +1,4 @@
+import './person-photos-v1.js';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/+esm';
 
 const SUPABASE_URL = 'https://jkakvpsiiffnidggcqzc.supabase.co';
