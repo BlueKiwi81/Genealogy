@@ -6,6 +6,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 const treeCanvas = document.getElementById('treeCanvas');
 const centreSelect = document.getElementById('centreSelect');
+const personName = document.getElementById('personName');
 const state = { people: [], relationships: [], byId: new Map(), loaded: false };
 let decorateTimer = null;
 
@@ -44,6 +45,12 @@ function uniquePersonByName(name) {
   return matches.length === 1 ? matches[0] : null;
 }
 
+function selectedPerson() {
+  const label = personName?.textContent?.trim();
+  if (!label || label === 'Choose a person') return null;
+  return uniquePersonByName(label);
+}
+
 function recenter(personId) {
   if (!centreSelect || !personId) return;
   const option = [...centreSelect.options].find((item) => item.value === personId);
@@ -52,44 +59,47 @@ function recenter(personId) {
   centreSelect.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-function showSiblingBand(person, persistent = false) {
+function removeSiblingDrawer() {
+  document.getElementById('collateralSiblingDrawer')?.remove();
+}
+
+function showSiblingDrawer(person) {
+  removeSiblingDrawer();
   if (!treeCanvas || !person) return;
-  treeCanvas.querySelector('.collateral-band')?.remove();
   const siblings = siblingsOf(person.id);
   if (!siblings.length) return;
 
-  const band = document.createElement('div');
-  band.className = `collateral-band${persistent ? ' centre-collateral-band' : ''}`;
-  const label = document.createElement('span');
-  label.className = 'collateral-band-label';
-  label.textContent = `Siblings of ${shortName(person)}:`;
-  band.appendChild(label);
+  const drawer = document.createElement('div');
+  drawer.id = 'collateralSiblingDrawer';
+  drawer.className = 'collateral-drawer';
 
+  const heading = document.createElement('div');
+  heading.className = 'collateral-drawer-heading';
+  heading.innerHTML = `<span class="collateral-drawer-kicker">Sibling branch</span><strong>Siblings of ${canonicalName(person)}</strong>`;
+  drawer.appendChild(heading);
+
+  const people = document.createElement('div');
+  people.className = 'collateral-drawer-people';
   siblings.forEach((sibling) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'collateral-person';
-    button.textContent = shortName(sibling);
+    button.innerHTML = `<span>${shortName(sibling)}</span><small>${canonicalName(sibling)}</small>`;
     button.title = `Centre the fan on ${canonicalName(sibling)}`;
     button.addEventListener('click', () => recenter(sibling.id));
-    band.appendChild(button);
+    people.appendChild(button);
   });
+  drawer.appendChild(people);
 
-  if (!persistent) {
-    const close = document.createElement('button');
-    close.type = 'button';
-    close.className = 'collateral-close';
-    close.setAttribute('aria-label', 'Close sibling band');
-    close.textContent = 'x';
-    close.addEventListener('click', () => {
-      band.remove();
-      const centre = getPerson(centreSelect?.value);
-      if (centre && siblingsOf(centre.id).length) showSiblingBand(centre, true);
-    });
-    band.appendChild(close);
-  }
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'collateral-close';
+  close.setAttribute('aria-label', 'Close sibling branch');
+  close.textContent = 'x';
+  close.addEventListener('click', removeSiblingDrawer);
+  drawer.appendChild(close);
 
-  treeCanvas.appendChild(band);
+  treeCanvas.parentElement?.insertBefore(drawer, treeCanvas);
 }
 
 function addAncestorBadge(group, person) {
@@ -111,7 +121,7 @@ function addAncestorBadge(group, person) {
   const activate = (event) => {
     event.preventDefault();
     event.stopPropagation();
-    showSiblingBand(person, false);
+    showSiblingDrawer(person);
   };
   badge.addEventListener('click', activate);
   badge.addEventListener('keydown', (event) => {
@@ -121,21 +131,24 @@ function addAncestorBadge(group, person) {
 }
 
 function decorateFan() {
-  if (!state.loaded || !treeCanvas || !centreSelect?.value) return;
+  if (!state.loaded || !treeCanvas) return;
   const svg = treeCanvas.querySelector('svg');
   if (!svg) return;
 
   svg.querySelectorAll('.collateral-sibling-badge').forEach((node) => node.remove());
-  const centre = getPerson(centreSelect.value);
-  if (centre && siblingsOf(centre.id).length) showSiblingBand(centre, true);
-  else treeCanvas.querySelector('.collateral-band')?.remove();
-
   svg.querySelectorAll('.person-node[aria-label]').forEach((group) => {
     const label = group.getAttribute('aria-label') || '';
     const person = uniquePersonByName(label);
-    if (!person || person.id === centre?.id) return;
-    addAncestorBadge(group, person);
+    if (person) addAncestorBadge(group, person);
   });
+}
+
+function syncDrawerToSelection() {
+  if (!state.loaded) return;
+  const person = selectedPerson();
+  if (!person) return;
+  if (siblingsOf(person.id).length) showSiblingDrawer(person);
+  else removeSiblingDrawer();
 }
 
 function scheduleDecorate(delay = 60) {
@@ -148,15 +161,18 @@ function installStyles() {
   const style = document.createElement('style');
   style.id = 'collateralBandStyles';
   style.textContent = `
-    .tree-canvas{position:relative}
-    .collateral-band{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:7;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;max-width:86%;padding:8px 10px;border:1px solid rgba(94,73,53,.25);border-radius:999px;background:rgba(255,253,248,.94);box-shadow:0 5px 18px rgba(48,38,29,.12);font:700 11px/1.2 Arial,sans-serif}
-    .collateral-band-label{color:#6f655c;margin-right:2px}
-    .collateral-person,.collateral-close{border:1px solid rgba(94,73,53,.22);background:#ece0d1;color:#3e3329;border-radius:999px;padding:5px 9px;cursor:pointer;font:700 11px Arial,sans-serif}
+    .collateral-drawer{position:relative;display:flex;align-items:center;gap:14px;margin:12px 0 0;padding:11px 46px 11px 14px;border:1px solid rgba(94,73,53,.22);border-radius:14px;background:#fffaf2;box-shadow:0 4px 14px rgba(48,38,29,.07);font-family:Arial,sans-serif}
+    .collateral-drawer-heading{min-width:150px;display:grid;gap:2px;color:#3e3329;font-size:12px}
+    .collateral-drawer-kicker{font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#85786b}
+    .collateral-drawer-people{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .collateral-person{display:grid;gap:1px;min-width:92px;border:1px solid rgba(94,73,53,.22);background:#ece0d1;color:#3e3329;border-radius:10px;padding:7px 10px;cursor:pointer;text-align:left;font-family:Arial,sans-serif}
+    .collateral-person span{font-size:12px;font-weight:700}
+    .collateral-person small{font-size:9px;color:#706459}
     .collateral-person:hover{filter:brightness(.97)}
-    .collateral-close{width:27px;height:27px;padding:0;background:#fff}
+    .collateral-close{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:1px solid rgba(94,73,53,.2);border-radius:50%;background:#fff;color:#55483c;cursor:pointer}
     .collateral-sibling-badge{fill:#5e4935;font:700 7px Arial,sans-serif;text-anchor:middle;cursor:pointer;text-decoration:underline}
     .collateral-sibling-badge:hover{font-size:7.5px}
-    @media(max-width:760px){.collateral-band{left:12px;right:12px;bottom:10px;transform:none;max-width:none;border-radius:14px}}
+    @media(max-width:760px){.collateral-drawer{align-items:flex-start;flex-direction:column;padding-right:44px}.collateral-drawer-heading{min-width:0}.collateral-drawer-people{width:100%}.collateral-person{flex:1 1 110px}}
   `;
   document.head.appendChild(style);
 }
@@ -175,7 +191,7 @@ async function loadData() {
 }
 
 async function start() {
-  if (!treeCanvas || !centreSelect) return;
+  if (!treeCanvas || !centreSelect || !personName) return;
   installStyles();
   try {
     await loadData();
@@ -184,14 +200,30 @@ async function start() {
     return;
   }
 
-  centreSelect.addEventListener('change', () => scheduleDecorate(120));
+  centreSelect.addEventListener('change', () => {
+    removeSiblingDrawer();
+    scheduleDecorate(120);
+  });
+
+  // Any click on a person cell updates the Selected person panel in the main
+  // renderer. Read that selection immediately afterwards and open the relevant
+  // sibling branch automatically.
+  treeCanvas.addEventListener('click', () => window.setTimeout(syncDrawerToSelection, 0));
+  treeCanvas.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') window.setTimeout(syncDrawerToSelection, 0);
+  });
+
+  const nameObserver = new MutationObserver(() => window.setTimeout(syncDrawerToSelection, 0));
+  nameObserver.observe(personName, { childList: true, characterData: true, subtree: true });
+
   const observer = new MutationObserver((mutations) => {
     const svgChanged = mutations.some((mutation) => [...mutation.addedNodes].some((node) => node.nodeName?.toLowerCase() === 'svg'));
     if (svgChanged) scheduleDecorate(80);
   });
   observer.observe(treeCanvas, { childList: true, subtree: false });
+
   document.addEventListener('genealogy:known-as-updated', async () => {
-    try { await loadData(); scheduleDecorate(120); } catch { /* non-destructive enhancement */ }
+    try { await loadData(); scheduleDecorate(120); syncDrawerToSelection(); } catch { /* non-destructive enhancement */ }
   });
 }
 
