@@ -67,7 +67,7 @@ function showCodeEntry(email) {
   otpEmailLabel.textContent = email;
   otpPanel.classList.remove('hidden');
   otpCode.value = '';
-  setMessage(otpMessage, 'Enter the six-digit code from the newest email we sent you.');
+  setMessage(otpMessage, 'Enter the verification code from the newest email we sent you.');
   otpCode.focus();
   otpPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
@@ -98,12 +98,12 @@ loginForm.addEventListener('submit', async (event) => {
   pending.shouldCreateUser = false;
   pending.busy = true;
   setFormBusy(loginForm, true, 'Sending code...');
-  setMessage(authMessage, 'Sending a six-digit sign-in code...');
+  setMessage(authMessage, 'Sending your sign-in code...');
 
   try {
     await sendCode(email, false);
     showCodeEntry(email);
-    setMessage(authMessage, 'If this email is registered, a six-digit sign-in code is on its way.', 'success');
+    setMessage(authMessage, 'If this email is registered, a sign-in code is on its way.', 'success');
   } catch (error) {
     setMessage(authMessage, friendlyAuthError(error), 'error');
   } finally {
@@ -123,12 +123,12 @@ registerForm.addEventListener('submit', async (event) => {
   pending.shouldCreateUser = true;
   pending.busy = true;
   setFormBusy(registerForm, true, 'Sending code...');
-  setMessage(authMessage, 'Sending a six-digit verification code...');
+  setMessage(authMessage, 'Sending your verification code...');
 
   try {
     await sendCode(draft.email, true);
     showCodeEntry(draft.email);
-    setMessage(authMessage, 'Check your email for the six-digit code, then enter it below.', 'success');
+    setMessage(authMessage, 'Check your email for the verification code, then enter it below.', 'success');
   } catch (error) {
     setMessage(authMessage, friendlyAuthError(error), 'error');
   } finally {
@@ -146,8 +146,8 @@ otpForm.addEventListener('submit', async (event) => {
     setMessage(otpMessage, 'Request a new code first.', 'error');
     return;
   }
-  if (token.length !== 6) {
-    setMessage(otpMessage, 'Enter all six digits from the email.', 'error');
+  if (token.length < 6 || token.length > 10) {
+    setMessage(otpMessage, 'Enter the complete numeric code exactly as it appears in the email.', 'error');
     return;
   }
 
@@ -173,7 +173,7 @@ otpForm.addEventListener('submit', async (event) => {
 });
 
 otpCode.addEventListener('input', () => {
-  otpCode.value = otpCode.value.replace(/\D/g, '').slice(0, 6);
+  otpCode.value = otpCode.value.replace(/\D/g, '').slice(0, 10);
 });
 
 otpBack.addEventListener('click', () => {
