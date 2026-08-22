@@ -76,7 +76,15 @@ function addStylesheet(href, marker) {
   document.head.appendChild(link);
 }
 
+function loadOptionalModule(path) {
+  void import(path).catch((error) => console.error(`Optional genealogy module failed to load: ${path}`, error));
+}
+
 addStylesheet('./person-photos.css?v=2', 'person-photos');
 addStylesheet('./photo-import.css?v=1', 'photo-import');
-void import('./person-photos-v1.js?v=2');
-void import('./photo-import-v1.js?v=1');
+loadOptionalModule('./person-photos-v1.js?v=2');
+loadOptionalModule('./photo-import-v1.js?v=1');
+loadOptionalModule('./centre-family-polish-v2.js?v=2');
+loadOptionalModule('./source-upload-v1.js?v=2');
+loadOptionalModule('./sibling-band-v1.js?v=2');
+loadOptionalModule('./editor-evidence-v1.js?v=2');
