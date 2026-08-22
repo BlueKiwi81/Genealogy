@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="Private family history and genealogy network" />
   <title>Our Family History</title>
-  <link rel="stylesheet" href="./styles.css?v=5" />
-  <link rel="stylesheet" href="./editor.css?v=5" />
-  <link rel="stylesheet" href="./registration.css?v=5" />
+  <link rel="stylesheet" href="./styles.css?v=6" />
+  <link rel="stylesheet" href="./editor.css?v=6" />
+  <link rel="stylesheet" href="./registration.css?v=6" />
+  <link rel="stylesheet" href="./view-enhancements.css?v=1" />
 </head>
 <body>
   <div class="app-shell">
@@ -61,15 +62,17 @@
           <div class="panel tree-panel"><div class="panel-head"><div><p class="eyebrow">Interactive tree</p><h2>Family fan</h2></div><label class="select-label">Centre person<select id="centreSelect"></select></label></div><div id="treeStatus" class="message"></div><div id="treeCanvas" class="tree-canvas" aria-live="polite"></div></div>
           <aside class="side-column">
             <section class="panel" id="personPanel"><p class="eyebrow">Selected person</p><h2 id="personName">Choose a person</h2><div id="personDetails" class="detail-stack"></div></section>
-            <section class="panel"><p class="eyebrow">Help build the archive</p><h2>Suggest information</h2><form id="contributionForm" class="stack"><label for="contributionType">What are you adding?</label><select id="contributionType" required><option value="story">Story or recollection</option><option value="correction">Correction</option><option value="date">Date</option><option value="place">Place</option><option value="relationship">Relationship</option><option value="new_person">New person</option><option value="source">Source or record</option><option value="other">Other</option></select><label for="language">Language</label><input id="language" value="en" maxlength="12" /><label for="contributionText">Information</label><textarea id="contributionText" rows="6" required placeholder="Write in whichever language is most natural to you."></textarea><button class="button primary" type="submit">Submit for review</button></form><p id="contributionMessage" class="message" aria-live="polite"></p></section>
+            <section class="panel"><p class="eyebrow">Help build the archive</p><h2>Suggest information</h2><form id="contributionForm" class="stack"><label for="contributionType">What are you adding?</label><select id="contributionType" required><option value="story">Story or recollection</option><option value="nickname">Nickname / known as</option><option value="correction">Correction</option><option value="date">Date</option><option value="place">Place</option><option value="relationship">Relationship</option><option value="new_person">New person</option><option value="source">Source or record</option><option value="other">Other</option></select><label for="language">Language</label><input id="language" value="en" maxlength="12" /><label for="contributionText">Information</label><textarea id="contributionText" rows="6" required placeholder="Write in whichever language is most natural to you."></textarea><button class="button primary" type="submit">Submit for review</button></form><p id="contributionMessage" class="message" aria-live="polite"></p></section>
           </aside>
         </section>
         <section id="editorArea" class="editor-area hidden"><div class="editor-heading"><div><p class="eyebrow">Family editor</p><h2>Review and approval desk</h2><p class="lede">Approve family access and review submitted stories without changing the original contribution.</p></div><button id="refreshEditor" class="button secondary" type="button">Refresh queues</button></div><p id="editorMessage" class="message" aria-live="polite"></p><div class="editor-grid"><section class="panel"><p class="eyebrow">New relatives</p><h2>Access requests</h2><div id="accessQueue" class="queue-list"></div></section><section class="panel"><p class="eyebrow">Family submissions</p><h2>Contribution queue</h2><div id="contributionQueue" class="queue-list"></div></section></div></section>
       </section>
     </main>
   </div>
-  <script type="module" src="./app-v3.js?v=5"></script>
-  <script type="module" src="./centre-labels.js?v=1"></script>
-  <script type="module" src="./editor-v2.js?v=5"></script>
+  <script type="module" src="./app-v3.js?v=6"></script>
+  <script type="module" src="./centre-labels.js?v=2"></script>
+  <script type="module" src="./view-enhancements-v1.js?v=1"></script>
+  <script type="module" src="./editor-v2.js?v=6"></script>
+  <script type="module" src="./nickname-editor-v1.js?v=1"></script>
 </body>
 </html>
