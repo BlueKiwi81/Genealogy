@@ -27,7 +27,7 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir -p _site
-          cp index.html styles.css editor.css app-v2.js editor.js _site/
+          cp index.html styles.css editor.css registration.css app-v3.js editor-v2.js _site/
           touch _site/.nojekyll
 
       - name: Configure Pages
