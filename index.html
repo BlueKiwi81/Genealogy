@@ -25,9 +25,11 @@
         <div>
           <p class="eyebrow">Family access</p>
           <h2>Sign in to the family archive</h2>
-          <p class="lede">Enter your email address. We will send you a secure one-time sign-in link. New accounts can sign in, but family data remains unavailable until access is approved.</p>
+          <p class="lede">Tell us your first name and email address. We will send you a secure one-time sign-in link. New family members can request access without creating or remembering a password.</p>
         </div>
         <form id="loginForm" class="stack">
+          <label for="firstName">First name</label>
+          <input id="firstName" name="firstName" type="text" autocomplete="given-name" required placeholder="Werner" />
           <label for="email">Email address</label>
           <input id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com" />
           <button class="button primary" type="submit">Send sign-in link</button>
@@ -98,6 +100,6 @@
       </section>
     </main>
   </div>
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="./app-v2.js"></script>
 </body>
 </html>
