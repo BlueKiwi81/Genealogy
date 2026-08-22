@@ -1,1 +1,0 @@
-Temporary implementation note: authentication is being migrated from single-use magic links to six-digit email OTP codes to avoid link-scanner consumption of confirmation links. This file can be removed after deployment verification.
