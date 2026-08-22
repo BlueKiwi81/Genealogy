@@ -50,9 +50,14 @@ function displayName(person) {
   return [person?.preferred_name?.trim() || person?.given_names?.trim(), person?.surname?.trim()].filter(Boolean).join(' ');
 }
 
+function selectedPersonName() {
+  const value = personName?.textContent?.trim() || '';
+  return value && value !== 'Choose a person' ? value : '';
+}
+
 async function selectedPersonId() {
-  const displayed = personName?.textContent?.trim() || '';
-  if (displayed && displayed !== 'Choose a person') {
+  const displayed = selectedPersonName();
+  if (displayed) {
     const { data, error } = await supabase.from('people').select('id, given_names, preferred_name, surname');
     if (!error) {
       const matches = (data || []).filter((person) => canonicalName(person) === displayed || displayName(person) === displayed);
@@ -60,6 +65,57 @@ async function selectedPersonId() {
     }
   }
   return centreSelect?.value || null;
+}
+
+function updateTargetGuide() {
+  const target = selectedPersonName();
+  const targetBox = document.getElementById('contributionTarget');
+  if (!targetBox) return;
+  if (target) {
+    targetBox.innerHTML = `<strong>Linked to:</strong> ${target}<span>Anything you submit now will be attached to this person's record.</span>`;
+    targetBox.classList.remove('needs-selection');
+  } else {
+    targetBox.innerHTML = '<strong>No person selected.</strong><span>Click the person or fan cell that your information belongs to before submitting.</span>';
+    targetBox.classList.add('needs-selection');
+  }
+}
+
+function installContributionGuide() {
+  if (!form || document.getElementById('contributionGuide')) return;
+  const guide = document.createElement('div');
+  guide.id = 'contributionGuide';
+  guide.className = 'contribution-guide';
+  guide.innerHTML = `
+    <strong>Before you submit</strong>
+    <p>First click the person or fan cell that the information belongs to. Then check the name below. Your comment, correction, story or uploaded record will be linked to that person's family record.</p>
+    <div id="contributionTarget" class="contribution-target"></div>`;
+  form.insertBefore(guide, form.firstChild);
+
+  const style = document.createElement('style');
+  style.textContent = `
+    .contribution-guide{padding:12px 13px;border:1px solid #d8c6af;border-radius:12px;background:#fbf4e9;font: .84rem/1.45 Arial,sans-serif;color:#51483f}
+    .contribution-guide>strong{display:block;margin-bottom:4px;color:#3e3329;font-size:.8rem;letter-spacing:.025em}
+    .contribution-guide p{margin:0 0 9px;line-height:1.45}
+    .contribution-target{padding:8px 10px;border-radius:9px;background:#eef4e9;border:1px solid #c8d8bd}
+    .contribution-target strong{display:inline;color:#315f38}
+    .contribution-target span{display:block;margin-top:2px;font-size:.77rem;color:#655c53}
+    .contribution-target.needs-selection{background:#fff1e8;border-color:#e4c2a7}
+    .contribution-target.needs-selection strong{color:#8a4b28}
+    .source-upload-area{padding:12px;border:1px solid rgba(96,82,67,.24);border-radius:12px;background:rgba(250,247,242,.8)}
+    .source-upload-area.hidden{display:none}
+    .source-upload-area input[type=file]{width:100%;box-sizing:border-box;padding:10px;background:#fff;border:1px solid rgba(96,82,67,.28);border-radius:9px}
+    .source-upload-help{margin:7px 0 0;font-size:.82rem;line-height:1.4;color:#6d6358}
+    .source-file-list{margin-top:7px;font-size:.82rem;color:#51483f}
+    .source-file-list div{margin-top:3px}
+  `;
+  document.head.appendChild(style);
+
+  updateTargetGuide();
+  if (personName) {
+    const observer = new MutationObserver(updateTargetGuide);
+    observer.observe(personName, { childList: true, subtree: true, characterData: true });
+  }
+  centreSelect?.addEventListener('change', () => setTimeout(updateTargetGuide, 50));
 }
 
 function installUploadUi() {
@@ -78,17 +134,6 @@ function installUploadUi() {
     <div id="sourceFileList" class="source-file-list"></div>`;
 
   typeSelect.insertAdjacentElement('afterend', area);
-
-  const style = document.createElement('style');
-  style.textContent = `
-    .source-upload-area{padding:12px;border:1px solid rgba(96,82,67,.24);border-radius:12px;background:rgba(250,247,242,.8)}
-    .source-upload-area.hidden{display:none}
-    .source-upload-area input[type=file]{width:100%;box-sizing:border-box;padding:10px;background:#fff;border:1px solid rgba(96,82,67,.28);border-radius:9px}
-    .source-upload-help{margin:7px 0 0;font-size:.82rem;line-height:1.4;color:#6d6358}
-    .source-file-list{margin-top:7px;font-size:.82rem;color:#51483f}
-    .source-file-list div{margin-top:3px}
-  `;
-  document.head.appendChild(style);
 
   const fileInput = document.getElementById('sourceFiles');
   const fileList = document.getElementById('sourceFileList');
@@ -113,122 +158,146 @@ function installUploadUi() {
   syncVisibility();
 }
 
-async function uploadSourceContribution(event) {
-  if (!form || !typeSelect || typeSelect.value !== 'source') return;
-
-  event.preventDefault();
-  event.stopImmediatePropagation();
-
-  const fileInput = document.getElementById('sourceFiles');
-  const files = [...(fileInput?.files || [])];
-  const description = textArea?.value.trim() || '';
-
-  if (!description) {
-    setMessage('Please describe the record and what it relates to.', 'error');
-    return;
-  }
-  if (!files.length) {
-    setMessage('Please attach at least one record or image.', 'error');
-    return;
-  }
-  if (files.length > MAX_FILES) {
-    setMessage(`Please attach no more than ${MAX_FILES} files in one submission.`, 'error');
-    return;
-  }
-  for (const file of files) {
-    const ext = extensionOf(file.name);
-    if (!ALLOWED_EXTENSIONS.has(ext)) {
-      setMessage(`${file.name} is not a supported PDF or image file.`, 'error');
-      return;
-    }
-    if (file.size > MAX_BYTES) {
-      setMessage(`${file.name} is larger than 15 MB.`, 'error');
-      return;
-    }
-  }
-
+async function approvedSession() {
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    setMessage('Please sign in again before uploading a record.', 'error');
-    return;
-  }
-
-  const { data: profile, error: profileError } = await supabase
+  if (!session) throw new Error('Please sign in again before submitting information.');
+  const { data: profile, error } = await supabase
     .from('app_users')
     .select('status')
     .eq('user_id', session.user.id)
     .maybeSingle();
-  if (profileError || profile?.status !== 'approved') {
-    setMessage('Your family access must be approved before you can upload records.', 'error');
+  if (error || profile?.status !== 'approved') throw new Error('Your family access must be approved before you can submit information.');
+  return session;
+}
+
+function resetContributionForm() {
+  form.reset();
+  if (language) language.value = 'en';
+  typeSelect.value = 'story';
+  document.getElementById('sourceUploadArea')?.classList.add('hidden');
+  const list = document.getElementById('sourceFileList');
+  if (list) list.innerHTML = '';
+  if (textArea) textArea.placeholder = 'Write in whichever language is most natural to you.';
+  updateTargetGuide();
+}
+
+async function submitStandardContribution(session, targetPersonId, targetName, description) {
+  const payload = {
+    submitted_by: session.user.id,
+    target_person_id: targetPersonId,
+    contribution_type: typeSelect.value,
+    original_language: language?.value.trim() || 'en',
+    narrative_text: description,
+    payload: {
+      attached_to_name: targetName,
+      selected_record_linkage: true,
+    },
+  };
+  const { error } = await supabase.from('contributions').insert(payload);
+  if (error) throw error;
+  resetContributionForm();
+  setMessage(`Submitted for review and linked to ${targetName}.`, 'success');
+}
+
+async function submitSourceContribution(session, targetPersonId, targetName, description) {
+  const fileInput = document.getElementById('sourceFiles');
+  const files = [...(fileInput?.files || [])];
+
+  if (!files.length) throw new Error('Please attach at least one record or image.');
+  if (files.length > MAX_FILES) throw new Error(`Please attach no more than ${MAX_FILES} files in one submission.`);
+  for (const file of files) {
+    const ext = extensionOf(file.name);
+    if (!ALLOWED_EXTENSIONS.has(ext)) throw new Error(`${file.name} is not a supported PDF or image file.`);
+    if (file.size > MAX_BYTES) throw new Error(`${file.name} is larger than 15 MB.`);
+  }
+
+  setMessage(`Uploading ${files.length === 1 ? 'record' : `${files.length} records`} for ${targetName}...`);
+  const evidenceItems = [];
+  for (const file of files) {
+    const objectPath = `${session.user.id}/${Date.now()}-${crypto.randomUUID()}-${safeName(file.name)}`;
+    const { error: uploadError } = await supabase.storage
+      .from('family-evidence')
+      .upload(objectPath, file, { contentType: file.type || undefined, upsert: false });
+    if (uploadError) throw uploadError;
+
+    const evidencePayload = {
+      submitted_by: session.user.id,
+      evidence_type: 'other',
+      title: titleFrom(description, file.name),
+      storage_path: objectPath,
+      original_filename: file.name,
+      notes: description,
+      visibility: 'restricted',
+      review_status: 'pending',
+    };
+    const { data: evidence, error: evidenceError } = await supabase
+      .from('evidence_items')
+      .insert(evidencePayload)
+      .select('id, storage_path, original_filename, title')
+      .single();
+    if (evidenceError) throw evidenceError;
+    evidenceItems.push(evidence);
+  }
+
+  const payload = {
+    submitted_by: session.user.id,
+    target_person_id: targetPersonId,
+    contribution_type: 'source',
+    original_language: language?.value.trim() || 'en',
+    narrative_text: description,
+    payload: {
+      evidence_items: evidenceItems.map((item) => ({
+        id: item.id,
+        storage_path: item.storage_path,
+        original_filename: item.original_filename,
+        title: item.title,
+      })),
+      attachment_count: evidenceItems.length,
+      attached_to_name: targetName,
+      selected_record_linkage: true,
+    },
+  };
+
+  const { error: contributionError } = await supabase.from('contributions').insert(payload);
+  if (contributionError) throw contributionError;
+
+  resetContributionForm();
+  setMessage(`Record submitted for review and linked to ${targetName}. The original file has been preserved securely.`, 'success');
+}
+
+async function handleContribution(event) {
+  if (!form || !typeSelect) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+
+  const description = textArea?.value.trim() || '';
+  const targetName = selectedPersonName();
+  if (!targetName) {
+    setMessage('First click the person or fan cell that this information belongs to.', 'error');
+    return;
+  }
+  if (!description) {
+    setMessage('Please enter the information you want to submit.', 'error');
     return;
   }
 
-  const targetPersonId = await selectedPersonId();
-  const targetName = personName?.textContent?.trim() || null;
-  setMessage(`Uploading ${files.length === 1 ? 'record' : `${files.length} records`}...`);
-
   try {
-    const evidenceItems = [];
-    for (const file of files) {
-      const objectPath = `${session.user.id}/${Date.now()}-${crypto.randomUUID()}-${safeName(file.name)}`;
-      const { error: uploadError } = await supabase.storage
-        .from('family-evidence')
-        .upload(objectPath, file, { contentType: file.type || undefined, upsert: false });
-      if (uploadError) throw uploadError;
+    const session = await approvedSession();
+    const targetPersonId = await selectedPersonId();
+    if (!targetPersonId) throw new Error('I could not identify the selected family record. Click the person in the fan again and retry.');
 
-      const evidencePayload = {
-        submitted_by: session.user.id,
-        evidence_type: 'other',
-        title: titleFrom(description, file.name),
-        storage_path: objectPath,
-        original_filename: file.name,
-        notes: description,
-        visibility: 'restricted',
-        review_status: 'pending',
-      };
-      const { data: evidence, error: evidenceError } = await supabase
-        .from('evidence_items')
-        .insert(evidencePayload)
-        .select('id, storage_path, original_filename, title')
-        .single();
-      if (evidenceError) throw evidenceError;
-      evidenceItems.push(evidence);
+    if (typeSelect.value === 'source') {
+      await submitSourceContribution(session, targetPersonId, targetName, description);
+    } else {
+      await submitStandardContribution(session, targetPersonId, targetName, description);
     }
-
-    const payload = {
-      submitted_by: session.user.id,
-      target_person_id: targetPersonId,
-      contribution_type: 'source',
-      original_language: language?.value.trim() || 'en',
-      narrative_text: description,
-      payload: {
-        evidence_items: evidenceItems.map((item) => ({
-          id: item.id,
-          storage_path: item.storage_path,
-          original_filename: item.original_filename,
-          title: item.title,
-        })),
-        attachment_count: evidenceItems.length,
-        attached_to_name: targetName,
-      },
-    };
-
-    const { error: contributionError } = await supabase.from('contributions').insert(payload);
-    if (contributionError) throw contributionError;
-
-    form.reset();
-    if (language) language.value = 'en';
-    typeSelect.value = 'story';
-    document.getElementById('sourceUploadArea')?.classList.add('hidden');
-    document.getElementById('sourceFileList').innerHTML = '';
-    if (textArea) textArea.placeholder = 'Write in whichever language is most natural to you.';
-    setMessage('Record submitted for review. The original file has been preserved securely.', 'success');
   } catch (error) {
-    setMessage(error?.message || 'The record could not be uploaded. Please try again.', 'error');
+    setMessage(error?.message || 'The submission could not be saved. Please try again.', 'error');
   }
 }
 
 if (form && typeSelect) {
+  installContributionGuide();
   installUploadUi();
-  form.addEventListener('submit', uploadSourceContribution, true);
+  form.addEventListener('submit', handleContribution, true);
 }
