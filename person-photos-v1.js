@@ -4,8 +4,22 @@ const SUPABASE_URL = 'https://jkakvpsiiffnidggcqzc.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_h_0XIxzs33psSZTyKPGr8w_aJoVLw92';
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
+if (!document.querySelector('link[data-person-photos-css]')) {
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = './person-photos.css?v=1';
+  link.dataset.personPhotosCss = '1';
+  document.head.appendChild(link);
+}
+
 const personName = document.getElementById('personName');
-const photosHost = document.getElementById('personPhotos');
+const personDetails = document.getElementById('personDetails');
+let photosHost = document.getElementById('personPhotos');
+if (!photosHost && personDetails) {
+  photosHost = document.createElement('div');
+  photosHost.id = 'personPhotos';
+  personDetails.insertAdjacentElement('afterend', photosHost);
+}
 
 let people = [];
 let peopleByName = new Map();
@@ -104,9 +118,7 @@ async function renderPhotos(person) {
   for (const photo of photos || []) {
     try {
       items.push({ photo, url: await signedUrlFor(photo.storage_path) });
-    } catch (_) {
-      // Keep one inaccessible file from hiding the rest of the gallery.
-    }
+    } catch (_) {}
   }
 
   if (token !== loadToken) return;
@@ -209,7 +221,8 @@ async function selectCurrentPerson() {
     return;
   }
   const person = peopleByName.get(name);
-  if (!person || currentPerson?.id === person.id) return;
+  if (!person) return;
+  if (currentPerson?.id === person.id && photosHost.childElementCount) return;
   currentPerson = person;
   await renderPhotos(person);
 }
