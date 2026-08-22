@@ -88,3 +88,4 @@ loadOptionalModule('./centre-family-polish-v2.js?v=2');
 loadOptionalModule('./source-upload-v1.js?v=2');
 loadOptionalModule('./sibling-band-v1.js?v=2');
 loadOptionalModule('./editor-evidence-v1.js?v=2');
+loadOptionalModule('./view-state-guard-v1.js?v=1');
