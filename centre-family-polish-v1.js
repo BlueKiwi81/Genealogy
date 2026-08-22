@@ -27,6 +27,9 @@ function childFirstName(labelText) {
 
 function setChildLabel(label, firstName, x) {
   const ns = 'http://www.w3.org/2000/svg';
+  const currentKey = `${firstName}|${x}`;
+  if (label.dataset.centrePolishKey === currentKey) return;
+  label.dataset.centrePolishKey = currentKey;
   label.textContent = '';
   label.setAttribute('x', String(x));
   label.setAttribute('y', '700');
@@ -83,7 +86,9 @@ function polishFamilyCentre() {
 }
 
 if (treeCanvas) {
+  // Watch only for the rendered SVG being replaced. Observing descendants caused
+  // this visual polish to trigger itself repeatedly in Safari.
   const observer = new MutationObserver(() => window.setTimeout(polishFamilyCentre, 0));
-  observer.observe(treeCanvas, { childList: true, subtree: true });
+  observer.observe(treeCanvas, { childList: true });
   window.addEventListener('load', () => window.setTimeout(polishFamilyCentre, 300));
 }
