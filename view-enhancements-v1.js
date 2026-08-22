@@ -134,7 +134,16 @@ function partnerEdgesOf(personId) {
 }
 
 function currentPartnerOf(personId) {
-  return partnerEdgesOf(personId).find((entry) => entry.relationship.relationship_status === 'current' && entry.relationship.relationship_type !== 'former_spouse')?.person || null;
+  const edges = partnerEdgesOf(personId);
+  const current = edges.find((entry) =>
+    entry.relationship.relationship_status === 'current'
+      && entry.relationship.relationship_type !== 'former_spouse');
+  if (current) return current.person;
+
+  const endedByDeath = edges.find((entry) =>
+    entry.relationship.relationship_status === 'ended_by_death'
+      && ['spouse', 'partner'].includes(entry.relationship.relationship_type));
+  return endedByDeath?.person || null;
 }
 
 function siblingsOf(personId) {
@@ -447,7 +456,6 @@ function ensureControls() {
   document.getElementById('treeViewMode').addEventListener('change', (event) => { state.mode = event.target.value; renderEnhancedTree(); });
   document.getElementById('generationDepth').addEventListener('change', (event) => { state.depth = Number(event.target.value) || 4; renderEnhancedTree(); });
 }
-
 function ensureNicknameContributionOption() {
   if (!ui.contributionType || [...ui.contributionType.options].some((option) => option.value === 'nickname')) return;
   const option = document.createElement('option');
