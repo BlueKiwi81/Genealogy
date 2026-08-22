@@ -10,6 +10,8 @@ const centreSelect = document.getElementById('centreSelect');
 const personName = document.getElementById('personName');
 const state = { people: [], relationships: [], byId: new Map(), loaded: false };
 let decorateTimer = null;
+let selectedPersonId = null;
+let selectedAnchorGroup = null;
 
 function canonicalName(person) {
   return [person?.given_names?.trim(), person?.surname?.trim()].filter(Boolean).join(' ');
@@ -29,15 +31,60 @@ function getPerson(id) {
   return state.byId.get(id) || null;
 }
 
-function parentIdsOf(personId) {
+function parentEdgesOf(personId) {
   return state.relationships
     .filter((r) => r.relationship_type === 'parent' && r.person2_id === personId)
-    .map((r) => r.person1_id);
+    .map((relationship) => ({ relationship, person: getPerson(relationship.person1_id) }))
+    .filter((entry) => entry.person);
+}
+
+function parentPairOf(personId) {
+  const candidates = parentEdgesOf(personId);
+  const slots = [null, null];
+  const used = new Set();
+  const father = candidates.findIndex((entry) => entry.person.gender === 'male');
+  const mother = candidates.findIndex((entry) => entry.person.gender === 'female');
+  if (father >= 0) { slots[0] = candidates[father]; used.add(father); }
+  if (mother >= 0) { slots[1] = candidates[mother]; used.add(mother); }
+  candidates.forEach((entry, index) => {
+    if (used.has(index)) return;
+    const open = slots.findIndex((slot) => slot === null);
+    if (open >= 0) slots[open] = entry;
+  });
+  return slots;
+}
+
+function childrenOf(personId) {
+  return state.relationships
+    .filter((r) => r.relationship_type === 'parent' && r.person1_id === personId)
+    .map((r) => getPerson(r.person2_id))
+    .filter(Boolean)
+    .sort((a, b) => (a.birth_date || '9999').localeCompare(b.birth_date || '9999'));
+}
+
+function partnerEdgesOf(personId) {
+  return state.relationships
+    .filter((r) => ['spouse', 'partner', 'former_spouse'].includes(r.relationship_type)
+      && (r.person1_id === personId || r.person2_id === personId))
+    .map((relationship) => ({
+      relationship,
+      person: getPerson(relationship.person1_id === personId ? relationship.person2_id : relationship.person1_id),
+    }))
+    .filter((entry) => entry.person);
+}
+
+function familyPartnerOf(personId) {
+  const edges = partnerEdgesOf(personId);
+  const current = edges.find((entry) => entry.relationship.relationship_status === 'current'
+    && entry.relationship.relationship_type !== 'former_spouse');
+  if (current) return current.person;
+  return edges.find((entry) => entry.relationship.relationship_status === 'ended_by_death'
+    && ['spouse', 'partner'].includes(entry.relationship.relationship_type))?.person || null;
 }
 
 function siblingsOf(personId) {
   const ids = new Set();
-  const parentIds = new Set(parentIdsOf(personId));
+  const parentIds = new Set(parentEdgesOf(personId).map((entry) => entry.person.id));
   state.relationships.forEach((r) => {
     if (r.relationship_type === 'sibling' && (r.person1_id === personId || r.person2_id === personId)) {
       ids.add(r.person1_id === personId ? r.person2_id : r.person1_id);
@@ -47,15 +94,52 @@ function siblingsOf(personId) {
   return [...ids].map(getPerson).filter(Boolean).sort((a, b) => canonicalName(a).localeCompare(canonicalName(b)));
 }
 
-function uniquePersonByName(name) {
-  const matches = state.people.filter((person) => canonicalName(person) === name);
-  return matches.length === 1 ? matches[0] : null;
+function coupleChildren(person, partner) {
+  if (!partner) return childrenOf(person.id);
+  const a = new Set(childrenOf(person.id).map((child) => child.id));
+  const b = new Set(childrenOf(partner.id).map((child) => child.id));
+  const shared = [...a].filter((id) => b.has(id)).map(getPerson).filter(Boolean);
+  if (shared.length) return shared.sort((x, y) => (x.birth_date || '9999').localeCompare(y.birth_date || '9999'));
+  return [...new Set([...a, ...b])].map(getPerson).filter(Boolean)
+    .sort((x, y) => (x.birth_date || '9999').localeCompare(y.birth_date || '9999'));
 }
 
-function selectedPerson() {
-  const label = personName?.textContent?.trim();
-  if (!label || label === 'Choose a person') return null;
-  return uniquePersonByName(label);
+function buildAncestryLevels(personId, depth) {
+  const levels = [];
+  let current = [{ person: getPerson(personId), relationship: null }];
+  for (let generation = 0; generation < depth; generation += 1) {
+    const next = [];
+    current.forEach((entry) => {
+      if (!entry?.person) { next.push(null, null); return; }
+      const [father, mother] = parentPairOf(entry.person.id);
+      next.push(father, mother);
+    });
+    levels.push(next);
+    current = next;
+  }
+  return levels;
+}
+
+function buildCoupleLevels(person, partner, depth) {
+  const levels = [];
+  const first = [...parentPairOf(person.id), ...(partner ? parentPairOf(partner.id) : [null, null])];
+  levels.push(first);
+  let current = first;
+  for (let generation = 1; generation < depth; generation += 1) {
+    const next = [];
+    current.forEach((entry) => {
+      if (!entry?.person) { next.push(null, null); return; }
+      const [father, mother] = parentPairOf(entry.person.id);
+      next.push(father, mother);
+    });
+    levels.push(next);
+    current = next;
+  }
+  return levels;
+}
+
+function removeSiblingDrawer() {
+  document.getElementById('collateralSiblingDrawer')?.remove();
 }
 
 function recenter(personId) {
@@ -64,10 +148,6 @@ function recenter(personId) {
   if (!option) return;
   centreSelect.value = personId;
   centreSelect.dispatchEvent(new Event('change', { bubbles: true }));
-}
-
-function removeSiblingDrawer() {
-  document.getElementById('collateralSiblingDrawer')?.remove();
 }
 
 function showSiblingDrawer(person) {
@@ -82,7 +162,12 @@ function showSiblingDrawer(person) {
 
   const heading = document.createElement('div');
   heading.className = 'collateral-drawer-heading';
-  heading.innerHTML = `<span class="collateral-drawer-kicker">Sibling branch</span><strong>Siblings of ${canonicalName(person)}</strong>`;
+  const kicker = document.createElement('span');
+  kicker.className = 'collateral-drawer-kicker';
+  kicker.textContent = 'Sibling branch';
+  const title = document.createElement('strong');
+  title.textContent = `Siblings of ${canonicalName(person)}`;
+  heading.append(kicker, title);
   drawer.appendChild(heading);
 
   const people = document.createElement('div');
@@ -91,7 +176,11 @@ function showSiblingDrawer(person) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'collateral-person';
-    button.innerHTML = `<span>${shortName(sibling)}</span><small>${canonicalName(sibling)}</small>`;
+    const short = document.createElement('span');
+    short.textContent = shortName(sibling);
+    const full = document.createElement('small');
+    full.textContent = canonicalName(sibling);
+    button.append(short, full);
     button.title = `Centre the fan on ${canonicalName(sibling)}`;
     button.addEventListener('click', () => recenter(sibling.id));
     people.appendChild(button);
@@ -112,59 +201,86 @@ function showSiblingDrawer(person) {
   treeCanvas.parentElement?.insertBefore(drawer, treeCanvas);
 }
 
+function assignPersonIdsToFan() {
+  if (!state.loaded || !treeCanvas || !centreSelect?.value) return;
+  const svg = treeCanvas.querySelector('svg');
+  const centre = getPerson(centreSelect.value);
+  if (!svg || !centre) return;
+
+  svg.querySelectorAll('[data-person-id]').forEach((node) => node.removeAttribute('data-person-id'));
+
+  const mode = document.getElementById('treeViewMode')?.value || 'family';
+  const depth = Number(document.getElementById('generationDepth')?.value || 4);
+  const partner = mode === 'family' ? familyPartnerOf(centre.id) : null;
+  const familyMode = mode === 'family' && Boolean(partner);
+  const levels = familyMode ? buildCoupleLevels(centre, partner, depth) : buildAncestryLevels(centre.id, depth);
+  const wedgeIds = levels.flat().filter((entry) => entry?.person).map((entry) => entry.person.id);
+  const wedgeGroups = [...svg.querySelectorAll('.person-node')].filter((group) => group.querySelector('path'));
+  wedgeGroups.forEach((group, index) => {
+    if (wedgeIds[index]) group.dataset.personId = wedgeIds[index];
+  });
+
+  if (familyMode) {
+    const cards = [...svg.querySelectorAll('.family-centre-person')];
+    if (cards[0]) cards[0].dataset.personId = centre.id;
+    if (cards[1] && partner) cards[1].dataset.personId = partner.id;
+    const children = coupleChildren(centre, partner);
+    [...svg.querySelectorAll('.family-child-node')].forEach((group, index) => {
+      if (children[index]) group.dataset.personId = children[index].id;
+    });
+  } else {
+    const singleCentre = [...svg.querySelectorAll('.person-node')].find((group) => group.querySelector('.centre-card'));
+    if (singleCentre) singleCentre.dataset.personId = centre.id;
+  }
+}
+
 function parseTranslate(value) {
   const match = String(value || '').match(/translate\(\s*(-?[\d.]+)[ ,]+(-?[\d.]+)\s*\)/);
   return match ? { x: Number(match[1]), y: Number(match[2]) } : null;
 }
 
-function anchorForPerson(svg, person) {
-  const canonical = canonicalName(person);
-  const ancestryGroup = [...svg.querySelectorAll('.person-node[aria-label]')]
-    .find((group) => group.getAttribute('aria-label') === canonical);
-  if (ancestryGroup) {
-    const textGroup = [...ancestryGroup.querySelectorAll('g[transform]')]
-      .find((node) => node.querySelector('text'));
-    const point = parseTranslate(textGroup?.getAttribute('transform'));
-    if (point) {
-      const path = ancestryGroup.querySelector('path');
-      return { ...point, group: ancestryGroup, fill: path?.getAttribute('fill') || '#e7bea0', centre: false };
-    }
+function groupForPerson(svg, person, preferredGroup = null) {
+  if (preferredGroup?.isConnected && preferredGroup.dataset?.personId === person.id) return preferredGroup;
+  return [...svg.querySelectorAll('[data-person-id]')].find((group) => group.dataset.personId === person.id) || null;
+}
+
+function anchorForPerson(svg, person, preferredGroup = null) {
+  const group = groupForPerson(svg, person, preferredGroup);
+  if (!group) return null;
+
+  if (group.classList.contains('family-centre-person')) {
+    const rect = group.querySelector('.family-centre-card');
+    if (!rect) return null;
+    return {
+      x: Number(rect.getAttribute('x')) + Number(rect.getAttribute('width')) / 2,
+      y: Number(rect.getAttribute('y')) + Number(rect.getAttribute('height')) / 2,
+      group,
+      fill: '#e7bea0',
+      centre: true,
+    };
   }
 
-  const first = firstLegalName(person);
-  const familyCard = [...svg.querySelectorAll('.family-centre-person')]
-    .find((group) => group.querySelector('.family-centre-name')?.textContent?.trim().startsWith(first));
-  if (familyCard) {
-    const rect = familyCard.querySelector('.family-centre-card');
-    if (rect) {
-      const x = Number(rect.getAttribute('x')) + Number(rect.getAttribute('width')) / 2;
-      const y = Number(rect.getAttribute('y')) + Number(rect.getAttribute('height')) / 2;
-      return { x, y, group: familyCard, fill: rect.getAttribute('fill') || '#fffaf2', centre: true };
-    }
+  if (group.classList.contains('family-child-node')) {
+    const circle = group.querySelector('.family-child-circle');
+    if (!circle) return null;
+    return {
+      x: Number(circle.getAttribute('cx')),
+      y: Number(circle.getAttribute('cy')),
+      group,
+      fill: circle.getAttribute('fill') || '#efe4d5',
+      centre: true,
+    };
   }
 
-  const singleName = [...svg.querySelectorAll('.centre-name')]
-    .find((node) => node.textContent?.trim() === canonical);
-  if (singleName) return { x: 600, y: 600, group: singleName.parentElement, fill: '#fffaf2', centre: true };
-
-  const childNode = [...svg.querySelectorAll('.family-child-node')]
-    .find((group) => {
-      const label = group.querySelector('.family-child-label')?.textContent?.trim() || '';
-      return label === first || label.startsWith(first);
-    });
-  if (childNode) {
-    const circle = childNode.querySelector('.family-child-circle');
-    if (circle) {
-      return {
-        x: Number(circle.getAttribute('cx')),
-        y: Number(circle.getAttribute('cy')),
-        group: childNode,
-        fill: circle.getAttribute('fill') || '#efe4d5',
-        centre: true,
-      };
-    }
+  if (group.querySelector('.centre-card')) {
+    return { x: 600, y: 600, group, fill: '#fffaf2', centre: true };
   }
-  return null;
+
+  const textGroup = [...group.querySelectorAll('g[transform]')].find((node) => node.querySelector('text'));
+  const point = parseTranslate(textGroup?.getAttribute('transform'));
+  if (!point) return null;
+  const path = group.querySelector('path');
+  return { ...point, group, fill: path?.getAttribute('fill') || '#e7bea0', centre: false };
 }
 
 function removeVisualBranch() {
@@ -181,7 +297,7 @@ function branchSide(anchor, count) {
   const ry = dy / length;
   const tx = -ry;
   const ty = rx;
-  const span = 50 + Math.max(0, count - 1) * 46;
+  const span = 66 + Math.max(0, count - 1) * 60;
   const candidates = [1, -1].map((sign) => {
     const x = anchor.x + tx * sign * span;
     const y = anchor.y + ty * sign * span;
@@ -202,20 +318,27 @@ function addSvgText(ns, parent, x, y, text, className) {
   return node;
 }
 
-function renderVisualBranch(person) {
+function addBranchPath(ns, branch, d, kind) {
+  const halo = document.createElementNS(ns, 'path');
+  halo.setAttribute('d', d);
+  halo.setAttribute('class', `collateral-${kind}-halo`);
+  branch.appendChild(halo);
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', d);
+  path.setAttribute('class', `collateral-${kind}`);
+  branch.appendChild(path);
+}
+
+function renderVisualBranch(person, preferredGroup = selectedAnchorGroup) {
   removeVisualBranch();
   if (!treeCanvas || !person) return;
   const siblings = siblingsOf(person.id);
   if (!siblings.length) return;
   const svg = treeCanvas.querySelector('svg');
   if (!svg) return;
-  const anchor = anchorForPerson(svg, person);
-  if (!anchor) return;
-
-  // The centre circle is deliberately kept clean. The collateral branch is
-  // drawn for people occupying a fan wedge; centre-person siblings remain in
-  // the sibling drawer above the fan.
-  if (anchor.centre) return;
+  assignPersonIdsToFan();
+  const anchor = anchorForPerson(svg, person, preferredGroup);
+  if (!anchor || anchor.centre) return;
 
   anchor.group?.classList.add('collateral-source-active');
   const ns = 'http://www.w3.org/2000/svg';
@@ -226,32 +349,22 @@ function renderVisualBranch(person) {
   const visible = siblings.slice(0, 5);
   const hiddenCount = Math.max(0, siblings.length - visible.length);
   const geometry = branchSide(anchor, visible.length + (hiddenCount ? 1 : 0));
-  const radialOffset = Math.hypot(anchor.x - 600, anchor.y - 600) > 485 ? -28 : 30;
+  const radialOffset = Math.hypot(anchor.x - 600, anchor.y - 600) > 485 ? -38 : 42;
   const stemX = anchor.x + geometry.rx * radialOffset;
   const stemY = anchor.y + geometry.ry * radialOffset;
-  const sideX = stemX + geometry.tx * geometry.sign * 25;
-  const sideY = stemY + geometry.ty * geometry.sign * 25;
+  const sideX = stemX + geometry.tx * geometry.sign * 34;
+  const sideY = stemY + geometry.ty * geometry.sign * 34;
 
-  const stem = document.createElementNS(ns, 'path');
-  stem.setAttribute('d', `M ${anchor.x} ${anchor.y} Q ${stemX} ${stemY} ${sideX} ${sideY}`);
-  stem.setAttribute('class', 'collateral-branch-stem');
-  branch.appendChild(stem);
+  addBranchPath(ns, branch, `M ${anchor.x} ${anchor.y} Q ${stemX} ${stemY} ${sideX} ${sideY}`, 'branch-stem');
 
   const items = visible.map((sibling) => ({ sibling, label: shortName(sibling), clickable: true }));
   if (hiddenCount) items.push({ sibling: null, label: `+${hiddenCount}`, clickable: false });
 
   items.forEach((item, index) => {
-    const distance = 48 + index * 48;
+    const distance = 62 + index * 62;
     const x = sideX + geometry.tx * geometry.sign * distance;
     const y = sideY + geometry.ty * geometry.sign * distance;
-
-    const twig = document.createElementNS(ns, 'line');
-    twig.setAttribute('x1', String(sideX));
-    twig.setAttribute('y1', String(sideY));
-    twig.setAttribute('x2', String(x));
-    twig.setAttribute('y2', String(y));
-    twig.setAttribute('class', 'collateral-branch-twig');
-    branch.appendChild(twig);
+    addBranchPath(ns, branch, `M ${sideX} ${sideY} L ${x} ${y}`, 'branch-twig');
 
     const node = document.createElementNS(ns, 'g');
     node.setAttribute('class', `collateral-branch-node${item.clickable ? ' is-clickable' : ''}`);
@@ -261,15 +374,29 @@ function renderVisualBranch(person) {
       node.setAttribute('aria-label', `Centre the fan on ${canonicalName(item.sibling)}`);
     }
 
+    const halo = document.createElementNS(ns, 'circle');
+    halo.setAttribute('cx', String(x));
+    halo.setAttribute('cy', String(y));
+    halo.setAttribute('r', '24');
+    halo.setAttribute('class', 'collateral-branch-node-halo');
+    node.appendChild(halo);
+
     const circle = document.createElementNS(ns, 'circle');
     circle.setAttribute('cx', String(x));
     circle.setAttribute('cy', String(y));
-    circle.setAttribute('r', '17');
+    circle.setAttribute('r', '20');
     circle.setAttribute('class', 'collateral-branch-circle');
-    circle.setAttribute('fill', anchor.fill);
     node.appendChild(circle);
 
-    addSvgText(ns, node, x, y + 3, item.label.slice(0, 10), 'collateral-branch-name');
+    const accent = document.createElementNS(ns, 'circle');
+    accent.setAttribute('cx', String(x));
+    accent.setAttribute('cy', String(y - 12));
+    accent.setAttribute('r', '4');
+    accent.setAttribute('fill', anchor.fill);
+    accent.setAttribute('class', 'collateral-branch-accent');
+    node.appendChild(accent);
+
+    addSvgText(ns, node, x, y + 5, item.label.slice(0, 11), 'collateral-branch-name');
 
     if (item.clickable) {
       const activate = (event) => {
@@ -288,15 +415,14 @@ function renderVisualBranch(person) {
   svg.appendChild(branch);
 }
 
-function decorateFan() {
-  if (!state.loaded || !treeCanvas) return;
-  const person = selectedPerson();
-  if (person) renderVisualBranch(person);
+function currentSelectedPerson() {
+  return getPerson(selectedPersonId || centreSelect?.value) || null;
 }
 
 function syncToSelection() {
   if (!state.loaded) return;
-  const person = selectedPerson();
+  assignPersonIdsToFan();
+  const person = currentSelectedPerson();
   if (!person) {
     removeSiblingDrawer();
     removeVisualBranch();
@@ -313,7 +439,7 @@ function syncToSelection() {
 
 function scheduleDecorate(delay = 60) {
   window.clearTimeout(decorateTimer);
-  decorateTimer = window.setTimeout(decorateFan, delay);
+  decorateTimer = window.setTimeout(syncToSelection, delay);
 }
 
 function installStyles() {
@@ -330,15 +456,21 @@ function installStyles() {
     .collateral-person small{font-size:9px;color:#706459}
     .collateral-person:hover{filter:brightness(.97)}
     .collateral-close{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:1px solid rgba(94,73,53,.2);border-radius:50%;background:#fff;color:#55483c;cursor:pointer}
-    .collateral-source-active>path{stroke:#5e4935!important;stroke-width:2.1!important}
+    .collateral-source-active>path{stroke:#4f4034!important;stroke-width:3!important;filter:drop-shadow(0 0 2px rgba(255,250,242,.95))}
     .collateral-visual-branch{pointer-events:none}
-    .collateral-branch-stem,.collateral-branch-twig{fill:none;stroke:#8a7b6e;stroke-width:1.35;stroke-linecap:round;opacity:.82}
-    .collateral-branch-twig{stroke-width:.9;opacity:.58}
+    .collateral-branch-stem-halo,.collateral-branch-twig-halo,.collateral-branch-stem,.collateral-branch-twig{fill:none;stroke-linecap:round;stroke-linejoin:round}
+    .collateral-branch-stem-halo{stroke:#fffaf2;stroke-width:8;opacity:.98}
+    .collateral-branch-stem{stroke:#55473c;stroke-width:2.7;opacity:.98}
+    .collateral-branch-twig-halo{stroke:#fffaf2;stroke-width:6;opacity:.96}
+    .collateral-branch-twig{stroke:#65564a;stroke-width:1.9;opacity:.94}
     .collateral-branch-node{pointer-events:none}
     .collateral-branch-node.is-clickable{pointer-events:all;cursor:pointer}
-    .collateral-branch-circle{stroke:#7f7165;stroke-width:1.15;fill-opacity:.88}
-    .collateral-branch-name{fill:#3f352d;font:700 7px Arial,sans-serif;text-anchor:middle;dominant-baseline:middle;pointer-events:none}
-    .collateral-branch-node.is-clickable:hover .collateral-branch-circle{stroke-width:2}
+    .collateral-branch-node-halo{fill:#fffaf2;stroke:#fff;stroke-width:4;opacity:.98}
+    .collateral-branch-circle{fill:#fffaf2;stroke:#55473c;stroke-width:2.2}
+    .collateral-branch-accent{stroke:#55473c;stroke-width:.7}
+    .collateral-branch-name{fill:#30271f;font:700 9.5px Arial,sans-serif;text-anchor:middle;dominant-baseline:middle;pointer-events:none;paint-order:stroke;stroke:#fffaf2;stroke-width:2.2px;stroke-linejoin:round}
+    .collateral-branch-node.is-clickable:hover .collateral-branch-circle{stroke-width:3.2}
+    .collateral-branch-node.is-clickable:focus .collateral-branch-circle{stroke-width:3.2}
     @media(max-width:760px){.collateral-drawer{align-items:flex-start;flex-direction:column;padding-right:44px}.collateral-drawer-heading{min-width:0}.collateral-drawer-people{width:100%}.collateral-person{flex:1 1 110px}}
   `;
   document.head.appendChild(style);
@@ -346,8 +478,8 @@ function installStyles() {
 
 async function loadData() {
   const [peopleResult, relationshipResult] = await Promise.all([
-    supabase.from('people').select('id, given_names, preferred_name, preferred_name_status, surname'),
-    supabase.from('relationships').select('person1_id, person2_id, relationship_type'),
+    supabase.from('people').select('id, given_names, preferred_name, preferred_name_status, surname, gender, birth_date'),
+    supabase.from('relationships').select('person1_id, person2_id, relationship_type, relationship_status, source_status'),
   ]);
   if (peopleResult.error) throw peopleResult.error;
   if (relationshipResult.error) throw relationshipResult.error;
@@ -357,33 +489,46 @@ async function loadData() {
   state.loaded = true;
 }
 
+function capturePersonInteraction(event) {
+  assignPersonIdsToFan();
+  const target = event.target.closest?.('[data-person-id]');
+  if (!target || !treeCanvas?.contains(target)) return;
+  selectedPersonId = target.dataset.personId;
+  selectedAnchorGroup = target;
+  window.setTimeout(syncToSelection, 0);
+}
+
 async function start() {
   if (!treeCanvas || !centreSelect || !personName) return;
   installStyles();
   try {
     await loadData();
+    selectedPersonId = centreSelect.value || null;
     scheduleDecorate(200);
   } catch {
     return;
   }
 
   centreSelect.addEventListener('change', () => {
+    selectedPersonId = centreSelect.value || null;
+    selectedAnchorGroup = null;
     removeSiblingDrawer();
     removeVisualBranch();
-    scheduleDecorate(140);
+    scheduleDecorate(150);
   });
 
-  treeCanvas.addEventListener('click', () => window.setTimeout(syncToSelection, 0));
+  treeCanvas.addEventListener('click', capturePersonInteraction, true);
   treeCanvas.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') window.setTimeout(syncToSelection, 0);
-  });
-
-  const nameObserver = new MutationObserver(() => window.setTimeout(syncToSelection, 0));
-  nameObserver.observe(personName, { childList: true, characterData: true, subtree: true });
+    if (event.key === 'Enter' || event.key === ' ') capturePersonInteraction(event);
+  }, true);
 
   const observer = new MutationObserver((mutations) => {
-    const svgChanged = mutations.some((mutation) => [...mutation.addedNodes].some((node) => node.nodeName?.toLowerCase() === 'svg'));
-    if (svgChanged) window.setTimeout(syncToSelection, 90);
+    const svgChanged = mutations.some((mutation) => [...mutation.addedNodes]
+      .some((node) => node.nodeName?.toLowerCase() === 'svg'));
+    if (!svgChanged) return;
+    selectedPersonId = centreSelect.value || selectedPersonId;
+    selectedAnchorGroup = null;
+    window.setTimeout(syncToSelection, 90);
   });
   observer.observe(treeCanvas, { childList: true, subtree: false });
 
