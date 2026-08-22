@@ -6,6 +6,7 @@
   <meta name="description" content="Private family history and genealogy network" />
   <title>Our Family History</title>
   <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./editor.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -97,9 +98,34 @@
             </section>
           </aside>
         </section>
+
+        <section id="editorArea" class="editor-area hidden">
+          <div class="editor-heading">
+            <div>
+              <p class="eyebrow">Family editor</p>
+              <h2>Review and approval desk</h2>
+              <p class="lede">Approve family access and review submitted stories without changing the original contribution.</p>
+            </div>
+            <button id="refreshEditor" class="button secondary" type="button">Refresh queues</button>
+          </div>
+          <p id="editorMessage" class="message" aria-live="polite"></p>
+          <div class="editor-grid">
+            <section class="panel">
+              <p class="eyebrow">New relatives</p>
+              <h2>Access requests</h2>
+              <div id="accessQueue" class="queue-list"></div>
+            </section>
+            <section class="panel">
+              <p class="eyebrow">Family submissions</p>
+              <h2>Contribution queue</h2>
+              <div id="contributionQueue" class="queue-list"></div>
+            </section>
+          </div>
+        </section>
       </section>
     </main>
   </div>
   <script type="module" src="./app-v2.js"></script>
+  <script type="module" src="./editor.js"></script>
 </body>
 </html>
