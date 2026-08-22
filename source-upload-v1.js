@@ -42,9 +42,24 @@ function titleFrom(description, filename) {
   return (firstLine || filename || 'Family source').slice(0, 180);
 }
 
-function selectedPersonId() {
-  const selected = centreSelect?.value || null;
-  return selected;
+function canonicalName(person) {
+  return [person?.given_names?.trim(), person?.surname?.trim()].filter(Boolean).join(' ');
+}
+
+function displayName(person) {
+  return [person?.preferred_name?.trim() || person?.given_names?.trim(), person?.surname?.trim()].filter(Boolean).join(' ');
+}
+
+async function selectedPersonId() {
+  const displayed = personName?.textContent?.trim() || '';
+  if (displayed && displayed !== 'Choose a person') {
+    const { data, error } = await supabase.from('people').select('id, given_names, preferred_name, surname');
+    if (!error) {
+      const matches = (data || []).filter((person) => canonicalName(person) === displayed || displayName(person) === displayed);
+      if (matches.length === 1) return matches[0].id;
+    }
+  }
+  return centreSelect?.value || null;
 }
 
 function installUploadUi() {
@@ -148,7 +163,8 @@ async function uploadSourceContribution(event) {
     return;
   }
 
-  const targetPersonId = selectedPersonId();
+  const targetPersonId = await selectedPersonId();
+  const targetName = personName?.textContent?.trim() || null;
   setMessage(`Uploading ${files.length === 1 ? 'record' : `${files.length} records`}...`);
 
   try {
@@ -193,7 +209,7 @@ async function uploadSourceContribution(event) {
           title: item.title,
         })),
         attachment_count: evidenceItems.length,
-        attached_to_name: personName?.textContent?.trim() || null,
+        attached_to_name: targetName,
       },
     };
 
