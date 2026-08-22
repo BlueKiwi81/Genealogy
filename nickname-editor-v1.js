@@ -66,3 +66,17 @@ queue?.addEventListener('click', (event) => {
   event.stopImmediatePropagation();
   approveKnownAs(card).catch((error) => setMessage(error.message || 'Unable to approve known-as name.', 'error'));
 }, true);
+
+function addStylesheet(href, marker) {
+  if (document.querySelector(`link[data-${marker}]`)) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = href;
+  link.setAttribute(`data-${marker}`, '1');
+  document.head.appendChild(link);
+}
+
+addStylesheet('./person-photos.css?v=2', 'person-photos');
+addStylesheet('./photo-import.css?v=1', 'photo-import');
+void import('./person-photos-v1.js?v=2');
+void import('./photo-import-v1.js?v=1');
