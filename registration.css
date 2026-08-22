@@ -1,5 +1,130 @@
-.auth-choice-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:18px;margin-top:18px}
-.auth-choice{border:1px solid var(--line,#ddd4c9);border-radius:14px;padding:18px;background:rgba(255,255,255,.32)}
-.auth-choice h3{margin:0 0 6px;font-size:1.05rem}.auth-choice p{margin:0 0 14px;color:var(--muted,#665e56);font-size:.92rem;line-height:1.45}
-.inline-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.check-row{display:flex;gap:9px;align-items:flex-start;font-size:.9rem;line-height:1.4}.check-row input{margin-top:3px;width:auto}.privacy-note{font-size:.82rem;color:var(--muted,#665e56);line-height:1.45;margin-top:10px}.verified-email{background:rgba(78,113,78,.08);border:1px solid rgba(78,113,78,.22);padding:10px 12px;border-radius:10px;font-size:.9rem}.pending-card{text-align:center;padding:14px 4px}.pending-card h2{margin-bottom:8px}.registration-evidence{background:rgba(183,151,99,.09);border:1px solid rgba(183,151,99,.22);border-radius:10px;padding:10px 12px;margin:10px 0 12px;font-size:.86rem}.registration-evidence>div{display:flex;justify-content:space-between;gap:12px;padding:3px 0}.registration-evidence strong{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}.registration-evidence p{margin:8px 0 0;color:var(--muted,#665e56)}
-@media(max-width:780px){.auth-choice-grid{grid-template-columns:1fr}.inline-fields{grid-template-columns:1fr}}
+.auth-panel{
+  max-width:1120px;
+  margin:5vh auto 0;
+  display:block;
+  padding:clamp(24px,4vw,42px);
+}
+.auth-panel>.lede,
+.auth-panel>div>.lede{
+  max-width:760px;
+}
+.auth-choice-grid{
+  display:grid;
+  grid-template-columns:minmax(280px,.72fr) minmax(520px,1.28fr);
+  gap:22px;
+  margin-top:26px;
+  align-items:start;
+}
+.auth-choice{
+  border:1px solid var(--line,#ddd4c9);
+  border-radius:16px;
+  padding:24px;
+  background:rgba(255,255,255,.48);
+  min-width:0;
+}
+.auth-choice h3{
+  margin:0 0 8px;
+  font-size:1.25rem;
+  line-height:1.15;
+}
+.auth-choice p{
+  margin:0 0 18px;
+  color:var(--muted,#665e56);
+  font-size:.94rem;
+  line-height:1.5;
+}
+.auth-choice .button{
+  margin-top:4px;
+}
+.inline-fields{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+.auth-choice input,
+.auth-choice select,
+.auth-choice textarea,
+#completeRegistrationForm input{
+  min-width:0;
+  width:100%;
+}
+.check-row{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  font-size:.9rem;
+  line-height:1.45;
+  margin-top:4px;
+}
+.check-row input{
+  margin-top:3px;
+  width:auto;
+  flex:0 0 auto;
+}
+.privacy-note{
+  font-size:.84rem;
+  color:var(--muted,#665e56);
+  line-height:1.5;
+  margin:4px 0 2px;
+  max-width:64ch;
+}
+.verified-email{
+  background:rgba(78,113,78,.08);
+  border:1px solid rgba(78,113,78,.22);
+  padding:10px 12px;
+  border-radius:10px;
+  font-size:.9rem;
+}
+.pending-card{
+  text-align:center;
+  padding:18px 6px;
+}
+.pending-card h2{
+  margin-bottom:8px;
+}
+.registration-evidence{
+  background:rgba(183,151,99,.09);
+  border:1px solid rgba(183,151,99,.22);
+  border-radius:10px;
+  padding:12px 14px;
+  margin:12px 0 14px;
+  font-size:.88rem;
+}
+.registration-evidence>div{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  padding:4px 0;
+}
+.registration-evidence strong{
+  font-size:.78rem;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.registration-evidence p{
+  margin:8px 0 0;
+  color:var(--muted,#665e56);
+}
+#registrationCard{
+  max-width:760px;
+}
+@media(max-width:920px){
+  .auth-choice-grid{
+    grid-template-columns:1fr;
+  }
+  .auth-choice{
+    padding:22px;
+  }
+}
+@media(max-width:620px){
+  .auth-panel{
+    margin-top:18px;
+    padding:20px;
+  }
+  .inline-fields{
+    grid-template-columns:1fr;
+  }
+  .auth-choice{
+    padding:18px;
+  }
+}
