@@ -21,12 +21,12 @@
 
     <main>
       <section id="authCard" class="panel auth-panel">
-        <div><p class="eyebrow">Family access</p><h2>Welcome to the family archive</h2><p class="lede">New relatives register once and verify an email address. Returning family members sign in with a secure one-time link. Nobody needs to create or remember a password.</p></div>
+        <div><p class="eyebrow">Family access</p><h2>Welcome to the family archive</h2><p class="lede">New relatives register once and verify their email with a six-digit code. Returning family members sign in with a six-digit code sent to their email address. Nobody needs to create or remember a password.</p></div>
         <div class="auth-choice-grid">
           <form id="loginForm" class="stack auth-choice">
             <h3>Already registered?</h3><p>Use the email address you registered with.</p>
             <label for="loginEmail">Email address</label><input id="loginEmail" type="email" autocomplete="email" required placeholder="you@example.com" />
-            <button class="button secondary" type="submit">Send sign-in link</button>
+            <button class="button secondary" type="submit">Send sign-in code</button>
           </form>
           <form id="registerForm" class="stack auth-choice">
             <h3>Register for family access</h3><p>Your details help the family editor identify the correct person before access is approved.</p>
@@ -36,9 +36,23 @@
             <label for="registerEmail">Email address</label><input id="registerEmail" type="email" autocomplete="email" required />
             <label class="check-row"><input id="registerUpdates" type="checkbox" /> <span>Email me when there are family-tree updates relevant to me. This is optional.</span></label>
             <p class="privacy-note">Your date of birth helps us match you to the right family record, but it does not automatically grant access. The family editor still approves every registration.</p>
-            <button class="button primary" type="submit">Register and verify email</button>
+            <button class="button primary" type="submit">Register and send code</button>
           </form>
         </div>
+
+        <div id="otpPanel" class="auth-choice hidden">
+          <p class="eyebrow">Email verification</p>
+          <h3>Enter your six-digit code</h3>
+          <p>We sent a code to <strong id="otpEmailLabel"></strong>. Use the code from the newest email you received.</p>
+          <form id="otpForm" class="stack">
+            <label for="otpCode">Verification code</label>
+            <input id="otpCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required placeholder="123456" />
+            <button class="button primary" type="submit">Verify code</button>
+          </form>
+          <button id="otpBack" class="button ghost" type="button">Use a different email</button>
+          <p id="otpMessage" class="message" aria-live="polite"></p>
+        </div>
+
         <p id="authMessage" class="message" aria-live="polite"></p>
       </section>
 
@@ -71,6 +85,7 @@
       </section>
     </main>
   </div>
+  <script type="module" src="./otp-auth-v1.js?v=1"></script>
   <script type="module" src="./app-v3.js?v=6"></script>
   <script type="module" src="./centre-labels.js?v=2"></script>
   <script type="module" src="./view-enhancements-v1.js?v=1"></script>
