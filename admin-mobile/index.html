@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#3f3329" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Family Admin" />
+  <meta name="description" content="Private mobile editor companion for Our Family History" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
+  <link rel="stylesheet" href="./admin.css?v=1" />
+  <title>Family Admin</title>
+</head>
+<body>
+  <main class="mobile-shell">
+    <section id="authView" class="auth-view">
+      <div class="brand-mark" aria-hidden="true">FH</div>
+      <p class="eyebrow">Our Family History</p>
+      <h1>Admin companion</h1>
+      <p class="lede">Private editor access for approvals, family submissions and photographs.</p>
+      <form id="loginForm" class="stack card">
+        <label for="loginEmail">Editor email</label>
+        <input id="loginEmail" type="email" autocomplete="email" required placeholder="you@example.com" />
+        <button class="button primary" type="submit">Send sign-in code</button>
+      </form>
+      <form id="otpForm" class="stack card hidden">
+        <label for="otpCode">Verification code</label>
+        <input id="otpCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" pattern="[0-9]{6,10}" required />
+        <button class="button primary" type="submit">Verify and open admin</button>
+      </form>
+      <p id="authMessage" class="message" aria-live="polite"></p>
+    </section>
+
+    <section id="forbiddenView" class="auth-view hidden">
+      <div class="brand-mark" aria-hidden="true">FH</div>
+      <p class="eyebrow">Editor access only</p>
+      <h1>This companion is private.</h1>
+      <p class="lede">Your signed-in account does not currently have editor or admin permission.</p>
+      <button id="forbiddenSignOut" class="button secondary" type="button">Sign out</button>
+    </section>
+
+    <section id="adminApp" class="admin-app hidden">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Our Family History</p>
+          <h1>Admin</h1>
+        </div>
+        <button id="refreshButton" class="icon-button" type="button" aria-label="Refresh">↻</button>
+      </header>
+
+      <section id="installNotice" class="install-notice hidden">
+        <strong>Install this on your Home Screen</strong>
+        <p>In Safari, tap Share, then <b>Add to Home Screen</b>. Open the installed app before enabling notifications.</p>
+      </section>
+
+      <section id="notificationCard" class="notification-card card">
+        <div>
+          <p class="eyebrow">Notifications</p>
+          <strong id="notificationStatus">Checking notification status…</strong>
+          <p id="notificationHelp" class="small">Get prompted when something needs an editor decision.</p>
+        </div>
+        <button id="enableNotifications" class="button secondary" type="button">Enable</button>
+      </section>
+
+      <div class="tab-panels">
+        <section id="homePanel" class="tab-panel active" data-panel="home">
+          <div class="attention-hero">
+            <p class="eyebrow">Needs attention</p>
+            <div class="attention-number" id="attentionCount">0</div>
+            <p id="attentionSummary">Nothing waiting right now.</p>
+          </div>
+          <div class="count-grid">
+            <button class="count-card" data-open-kind="access_request"><span id="accessCount">0</span><small>Access</small></button>
+            <button class="count-card" data-open-kind="tree_change"><span id="treeCount">0</span><small>Tree changes</small></button>
+            <button class="count-card" data-open-kind="contribution"><span id="contributionCount">0</span><small>Submissions</small></button>
+          </div>
+          <div class="section-heading"><div><p class="eyebrow">Latest</p><h2>Waiting for you</h2></div><button class="text-button" data-tab="review" type="button">See all</button></div>
+          <div id="latestQueue" class="queue-list"></div>
+        </section>
+
+        <section id="reviewPanel" class="tab-panel" data-panel="review">
+          <div class="section-heading"><div><p class="eyebrow">Review</p><h2>All pending items</h2></div></div>
+          <div class="filter-row" role="tablist" aria-label="Review filters">
+            <button class="filter active" data-filter="all" type="button">All</button>
+            <button class="filter" data-filter="access_request" type="button">Access</button>
+            <button class="filter" data-filter="tree_change" type="button">Tree</button>
+            <button class="filter" data-filter="contribution" type="button">Stories & files</button>
+          </div>
+          <div id="reviewQueue" class="queue-list"></div>
+        </section>
+
+        <section id="photosPanel" class="tab-panel" data-panel="photos">
+          <div class="section-heading"><div><p class="eyebrow">Quick capture</p><h2>Add a family photograph</h2></div></div>
+          <form id="photoForm" class="stack card upload-card">
+            <label for="photoPerson">Who does this photograph belong to?</label>
+            <select id="photoPerson" required></select>
+            <label for="photoFile">Photograph</label>
+            <input id="photoFile" type="file" accept="image/*" capture="environment" required />
+            <img id="photoPreview" class="photo-preview hidden" alt="Selected photograph preview" />
+            <label for="photoCaption">Caption / what do we know?</label>
+            <textarea id="photoCaption" rows="3" placeholder="Who is shown, what was happening, who supplied the photograph…"></textarea>
+            <div class="two-fields">
+              <div><label for="photoDate">Approximate date</label><input id="photoDate" type="text" placeholder="e.g. c. 1955" /></div>
+              <div><label for="photoPlace">Place</label><input id="photoPlace" type="text" placeholder="e.g. Germiston" /></div>
+            </div>
+            <button class="button primary" type="submit">Upload photograph</button>
+            <p id="photoMessage" class="message" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <section id="peoplePanel" class="tab-panel" data-panel="people">
+          <div class="section-heading"><div><p class="eyebrow">Family records</p><h2>Find a person</h2></div></div>
+          <input id="peopleSearch" class="search-input" type="search" placeholder="Search by name…" />
+          <div id="peopleResults" class="people-list"></div>
+        </section>
+      </div>
+
+      <nav class="bottom-nav" aria-label="Admin companion">
+        <button class="nav-item active" data-tab="home" type="button"><span>⌂</span><small>Home</small></button>
+        <button class="nav-item" data-tab="review" type="button"><span class="nav-badge-wrap">✓<b id="navReviewBadge" class="nav-badge hidden">0</b></span><small>Review</small></button>
+        <button class="nav-item" data-tab="photos" type="button"><span>＋</span><small>Photo</small></button>
+        <button class="nav-item" data-tab="people" type="button"><span>⌕</span><small>People</small></button>
+      </nav>
+    </section>
+  </main>
+
+  <div id="detailBackdrop" class="detail-backdrop hidden"></div>
+  <aside id="detailSheet" class="detail-sheet hidden" aria-modal="true" role="dialog" aria-labelledby="detailTitle">
+    <div class="sheet-grabber"></div>
+    <div class="sheet-head"><div><p id="detailKicker" class="eyebrow">Review</p><h2 id="detailTitle">Item</h2></div><button id="closeDetail" class="icon-button" type="button" aria-label="Close">×</button></div>
+    <div id="detailBody" class="detail-body"></div>
+  </aside>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script type="module" src="./admin.js?v=1"></script>
+</body>
+</html>
