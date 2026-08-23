@@ -1,4 +1,4 @@
-const CACHE = 'genealogy-admin-v1';
+const CACHE = 'genealogy-admin-v2';
 const SHELL = ['./','./index.html','./admin.css?v=1','./admin.js?v=1','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -44,7 +44,12 @@ self.addEventListener('push', (event) => {
     renotify: true,
     data: { url: data.url || './', eventId: data.eventId || null },
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil((async () => {
+    if ('setAppBadge' in self.registration) {
+      try { await self.registration.setAppBadge(1); } catch { /* badge support is best effort */ }
+    }
+    await self.registration.showNotification(title, options);
+  })());
 });
 
 self.addEventListener('notificationclick', (event) => {
