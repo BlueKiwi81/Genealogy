@@ -27,7 +27,7 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir -p _site
-          cp index.html styles.css editor.css registration.css view-enhancements.css fan-polish.css centre-family-polish.css person-photos.css photo-import.css app-v3.js otp-auth-v1.js otp-auth-v2.js centre-labels.js view-enhancements-v1.js svg-label-sizing-v1.js fan-polish-v1.js centre-family-polish-v1.js centre-family-polish-v2.js centre-card-fit-v1.js source-upload-v1.js sibling-band-v1.js sibling-band-v2.js sibling-family-centre-v1.js editor-evidence-v1.js view-state-guard-v1.js person-photos-v1.js photo-import-v1.js editor-v2.js nickname-editor-v1.js _site/
+          cp index.html styles.css editor.css registration.css view-enhancements.css fan-polish.css centre-family-polish.css person-photos.css photo-import.css app-v3.js otp-auth-v1.js otp-auth-v2.js tree-pending-overlay-v1.js centre-labels.js view-enhancements-v1.js svg-label-sizing-v1.js fan-polish-v1.js centre-family-polish-v1.js centre-family-polish-v2.js centre-card-fit-v1.js source-upload-v1.js sibling-band-v1.js sibling-band-v2.js sibling-family-centre-v1.js tree-suggestions-v1.js editor-evidence-v1.js view-state-guard-v1.js person-photos-v1.js photo-import-v1.js editor-v2.js editor-tree-suggestions-v1.js nickname-editor-v1.js _site/
           touch _site/.nojekyll
 
       - name: Configure Pages
