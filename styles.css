@@ -63,3 +63,142 @@ textarea { resize: vertical; min-height: 110px; }
 .empty-state { padding: 42px; max-width: 650px; margin: 110px auto; text-align: center; color: var(--muted); line-height: 1.55; }
 @media (max-width: 1040px) { .workspace { grid-template-columns: 1fr; } .side-column { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 760px) { .app-shell { padding: 14px; } .auth-panel, .intro-grid, .side-column { grid-template-columns: 1fr; } .topbar { align-items: flex-start; } .panel-head { align-items: stretch; flex-direction: column; } .select-label { width: 100%; } }
+
+/* Print override: isolate the active tree from the application layout and use the A4 page efficiently. */
+@media print {
+  @page { size: A4 landscape; margin: 5mm; }
+
+  html,
+  body {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* The earlier print layer used visibility:hidden, which preserved several pages of empty layout. */
+  html body * { visibility: visible !important; }
+
+  html body .topbar,
+  html body #authCard,
+  html body #registrationCard,
+  html body #appArea > .intro-grid,
+  html body #appArea .side-column,
+  html body #editorArea {
+    display: none !important;
+  }
+
+  html body .app-shell,
+  html body .app-shell main,
+  html body #appArea,
+  html body #appArea .workspace,
+  html body #appArea .tree-panel {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  html body #appArea .workspace {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  html body #appArea .tree-panel {
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
+  }
+
+  html body #appArea .tree-panel > .panel-head,
+  html body #appArea .tree-panel > .tree-perspective-switch,
+  html body #appArea .tree-panel > #treeStatus,
+  html body #appArea .tree-panel .enhanced-tree-controls,
+  html body #appArea .tree-panel .print-view-button,
+  html body #appArea .tree-panel [class*="sibling-drawer"],
+  html body #appArea .tree-panel [class*="collateral-card"] {
+    display: none !important;
+  }
+
+  html body #appArea .tree-panel .print-tree-header {
+    display: block !important;
+    margin: 0 0 1.5mm !important;
+    text-align: center !important;
+  }
+
+  html body #appArea .tree-panel .print-tree-kicker {
+    margin: 0 0 .5mm !important;
+    font-size: 6.5pt !important;
+    line-height: 1 !important;
+  }
+
+  html body #appArea .tree-panel .print-tree-header h1 {
+    margin: 0 !important;
+    font-size: 13pt !important;
+    line-height: 1.05 !important;
+  }
+
+  html body #appArea .tree-panel .print-tree-header p:last-child {
+    margin: .7mm 0 0 !important;
+    font-size: 7.5pt !important;
+    line-height: 1 !important;
+  }
+
+  html body #appArea .tree-panel #treeCanvas {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* The fan is a square 1200x1200 SVG. A4 landscape has 200 mm of usable page height at 5 mm margins. */
+  html body #appArea .tree-panel #treeCanvas > svg {
+    display: block !important;
+    width: 188mm !important;
+    height: 188mm !important;
+    max-width: 188mm !important;
+    max-height: 188mm !important;
+    min-width: 0 !important;
+    margin: 0 auto !important;
+    overflow: visible !important;
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+  }
+
+  html body #appArea .tree-panel .snapshot-scroll {
+    overflow: visible !important;
+    width: 100% !important;
+  }
+
+  html body #appArea .tree-panel .family-snapshot {
+    min-width: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+  }
+}
