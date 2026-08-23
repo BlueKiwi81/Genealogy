@@ -36,7 +36,7 @@
             <div class="inline-fields"><div><label for="registerFirstName">First name</label><input id="registerFirstName" type="text" autocomplete="given-name" required /></div><div><label for="registerMiddleNames">Middle name(s)</label><input id="registerMiddleNames" type="text" autocomplete="additional-name" /></div></div>
             <label for="registerLastName">Last name</label><input id="registerLastName" type="text" autocomplete="family-name" required />
             <label for="registerBirthDate">Date of birth</label><input id="registerBirthDate" type="date" autocomplete="bday" required />
-            <label for="registerEmail">Email address</label><input id="registerEmail" type="email" autocomplete="email" required />
+            <label for="registerEmail">Email address</label><input id="registerEmail" type="email" required />
             <label class="check-row"><input id="registerUpdates" type="checkbox" /> <span>Email me when there are family-tree updates relevant to me. This is optional.</span></label>
             <p class="privacy-note">Your date of birth helps us match you to the right family record, but it does not automatically grant access. The family editor still approves every registration.</p>
             <button class="button primary" type="submit">Register and send code</button>
@@ -76,7 +76,7 @@
       </section>
 
       <section id="appArea" class="hidden">
-        <section class="intro-grid"><div class="panel"><p class="eyebrow">Current view</p><h2 id="viewTitle">Family network</h2><p id="viewSummary" class="lede">Choose a person to place them at the centre of the tree.</p></div><div class="panel compact"><p class="eyebrow">Contribution model</p><p class="small">Family members suggest changes. Approved information becomes part of the shared canonical tree; original submissions remain preserved.</p></div></section>
+        <section class="intro-grid"><div class="panel"><p class="eyebrow">Current view</p><h2 id="viewTitle">Family network</h2><p id="viewSummary" class="lede">Choose a person to place them at the centre of the tree.</p></div><div class="panel compact"><p class="eyebrow">Contribution model</p><p class="small">Family members can build their working tree directly. Proposed edits stay reversible until reviewed; approved information becomes part of the shared canonical tree.</p></div></section>
         <section class="workspace">
           <div class="panel tree-panel"><div class="panel-head"><div><p class="eyebrow">Interactive tree</p><h2>Family fan</h2></div><label class="select-label">Centre person<select id="centreSelect"></select></label></div><div id="treeStatus" class="message"></div><div id="treeCanvas" class="tree-canvas" aria-live="polite"></div></div>
           <aside class="side-column">
@@ -84,11 +84,12 @@
             <section class="panel"><p class="eyebrow">Help build the archive</p><h2>Suggest information</h2><form id="contributionForm" class="stack"><label for="contributionType">What are you adding?</label><select id="contributionType" required><option value="story">Story or recollection</option><option value="nickname">Nickname / known as</option><option value="correction">Correction</option><option value="date">Date</option><option value="place">Place</option><option value="relationship">Relationship</option><option value="new_person">New person</option><option value="source">Source or record</option><option value="other">Other</option></select><label for="language">Language</label><input id="language" value="en" maxlength="12" /><label for="contributionText">Information</label><textarea id="contributionText" rows="6" required placeholder="Write in whichever language is most natural to you."></textarea><button class="button primary" type="submit">Submit for review</button></form><p id="contributionMessage" class="message" aria-live="polite"></p></section>
           </aside>
         </section>
-        <section id="editorArea" class="editor-area hidden"><div class="editor-heading"><div><p class="eyebrow">Family editor</p><h2>Review and approval desk</h2><p class="lede">Approve family access and review submitted stories without changing the original contribution.</p></div><button id="refreshEditor" class="button secondary" type="button">Refresh queues</button></div><p id="editorMessage" class="message" aria-live="polite"></p><div class="editor-grid"><section class="panel"><p class="eyebrow">New relatives</p><h2>Access requests</h2><div id="accessQueue" class="queue-list"></div></section><section class="panel"><p class="eyebrow">Family submissions</p><h2>Contribution queue</h2><div id="contributionQueue" class="queue-list"></div></section></div></section>
+        <section id="editorArea" class="editor-area hidden"><div class="editor-heading"><div><p class="eyebrow">Family editor</p><h2>Review and approval desk</h2><p class="lede">Approve family access, live tree changes and submitted stories while preserving the original evidence.</p></div><button id="refreshEditor" class="button secondary" type="button">Refresh queues</button></div><p id="editorMessage" class="message" aria-live="polite"></p><div class="editor-grid"><section class="panel"><p class="eyebrow">New relatives</p><h2>Access requests</h2><div id="accessQueue" class="queue-list"></div></section><section class="panel"><p class="eyebrow">Family submissions</p><h2>Contribution queue</h2><div id="contributionQueue" class="queue-list"></div></section></div></section>
       </section>
     </main>
   </div>
   <script type="module" src="./otp-auth-v2.js?v=20260822-2138"></script>
+  <script type="module" src="./tree-pending-overlay-v1.js?v=1"></script>
   <script type="module" src="./app-v3.js?v=7"></script>
   <script type="module" src="./centre-labels.js?v=3"></script>
   <script type="module" src="./view-enhancements-v1.js?v=4"></script>
@@ -99,9 +100,11 @@
   <script type="module" src="./source-upload-v1.js?v=3"></script>
   <script type="module" src="./sibling-band-v2.js?v=1"></script>
   <script type="module" src="./sibling-family-centre-v1.js?v=1"></script>
+  <script type="module" src="./tree-suggestions-v1.js?v=1"></script>
   <script type="module" src="./editor-evidence-v1.js?v=3"></script>
   <script type="module" src="./view-state-guard-v1.js?v=3"></script>
   <script type="module" src="./editor-v2.js?v=7"></script>
+  <script type="module" src="./editor-tree-suggestions-v1.js?v=1"></script>
   <script type="module" src="./nickname-editor-v1.js?v=3"></script>
 </body>
 </html>
