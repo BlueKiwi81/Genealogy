@@ -7,6 +7,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const editorArea = document.getElementById('editorArea');
 const refreshEditor = document.getElementById('refreshEditor');
 const state = { session: null, people: new Map(), users: new Map(), channel: null };
+const HISTORY_LABELS = {
+  south_african_war: 'South African War / Anglo-Boer War',
+  first_world_war: 'First World War',
+  second_world_war: 'Second World War',
+};
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -36,6 +41,31 @@ function changeSummary(change) {
   return change.change_type.replaceAll('_', ' ');
 }
 
+function humanValue(value) {
+  if (value === null || value === undefined || value === '') return 'blank';
+  if (typeof value === 'boolean') return value ? 'yes' : 'no';
+  return String(value).replaceAll('_', ' ');
+}
+
+function historyRows(context = {}) {
+  const rows = [];
+  Object.entries(context || {}).forEach(([key, entry]) => {
+    if (!entry || typeof entry !== 'object') return;
+    const label = HISTORY_LABELS[key] || key.replaceAll('_', ' ');
+    if (entry.status === 'no_known_information') {
+      rows.push([`Historical context - ${label}`, 'No information currently known']);
+      return;
+    }
+    if (entry.status === 'known') {
+      const parts = [];
+      if (entry.details) parts.push(entry.details);
+      if (entry.concentration_camp) parts.push(`Concentration camp: ${entry.concentration_camp}`);
+      rows.push([`Historical context - ${label}`, parts.join(' | ') || 'Contributor says information is known; details not supplied']);
+    }
+  });
+  return rows;
+}
+
 function detailRows(change) {
   const rows = [];
   if (change.change_type === 'add_relative') {
@@ -43,17 +73,31 @@ function detailRows(change) {
     rows.push(['Relationship', change.payload?.role || 'relative']);
     rows.push(['Name', [relative.given_names, relative.surname].filter(Boolean).join(' ') || 'Not supplied']);
     if (relative.preferred_name) rows.push(['Known as', relative.preferred_name]);
+    if (relative.life_status) rows.push(['Life status', humanValue(relative.life_status)]);
     if (relative.birth_date) rows.push(['Birth', relative.birth_date]);
-    if (relative.death_date) rows.push(['Death', relative.death_date]);
     if (relative.birth_place) rows.push(['Birth place', relative.birth_place]);
+    if (relative.residence_summary) rows.push(['Where they lived', relative.residence_summary]);
+    if (relative.death_date) rows.push(['Death', relative.death_date]);
+    if (relative.death_place) rows.push(['Death place', relative.death_place]);
+    if (relative.final_rest_type || relative.final_rest_place) {
+      rows.push(['Final resting place', [humanValue(relative.final_rest_type || ''), relative.final_rest_place].filter((value) => value && value !== 'blank').join(' - ') || 'Not supplied']);
+    }
+    if (relative.occupation_summary) rows.push(['Occupation', relative.occupation_summary]);
+    if (relative.military_service_summary) rows.push(['Military / other service', relative.military_service_summary]);
+    if (relative.narrative_summary) rows.push(['Family note', relative.narrative_summary]);
+    rows.push(...historyRows(relative.historical_context));
     if (['spouse','partner'].includes(change.payload?.role)) rows.push(['Relationship status', change.payload?.relationship_status || 'current']);
   } else if (change.change_type === 'edit_person') {
     const before = change.before_snapshot?.person || {};
     const after = change.payload?.after || {};
     Object.keys(after).forEach((key) => {
+      if (key === 'historical_context') {
+        rows.push(...historyRows(after.historical_context));
+        return;
+      }
       const oldValue = before[key] ?? '';
       const newValue = after[key] ?? '';
-      if (String(oldValue ?? '') !== String(newValue ?? '')) rows.push([key.replaceAll('_', ' '), `${oldValue || 'blank'} -> ${newValue || 'blank'}`]);
+      if (String(oldValue ?? '') !== String(newValue ?? '')) rows.push([key.replaceAll('_', ' '), `${humanValue(oldValue)} -> ${humanValue(newValue)}`]);
     });
   } else if (change.change_type === 'remove_relationship') {
     const relationship = change.before_snapshot?.relationship || {};
@@ -87,7 +131,7 @@ function installStyles() {
   const style = document.createElement('style');
   style.id = 'treeChangeReviewStyles';
   style.textContent = `
-    .tree-change-review-panel{margin-bottom:18px}.tree-change-review-heading{display:flex;justify-content:space-between;gap:16px;align-items:start}.tree-change-review-heading h2{display:flex;align-items:center;gap:9px}.tree-change-count{display:inline-flex;min-width:24px;height:24px;padding:0 7px;align-items:center;justify-content:center;border-radius:999px;background:#5e4935;color:white;font-size:11px}.tree-change-live{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:5px 8px;border-radius:999px;background:#edf5ec;color:#4d704f}.tree-change-queue{display:grid;gap:10px;margin-top:12px}.tree-change-card{border:1px solid rgba(91,72,55,.2);border-radius:14px;background:#fffaf2;padding:13px}.tree-change-card.is-conflict{border-color:rgba(164,105,44,.45);background:#fff8ec}.tree-change-top{display:flex;justify-content:space-between;gap:12px;align-items:start}.tree-change-top strong{font-size:13px;color:#3f3329}.tree-change-meta{font-size:10px;color:#74675b;margin:3px 0 0}.tree-change-status{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:4px 7px;background:#f0e4d5;color:#68584a}.tree-change-status.conflict{background:#f7e4bd;color:#7a5725}.tree-change-details{display:grid;grid-template-columns:minmax(90px,.35fr) 1fr;gap:5px 10px;margin:11px 0;font-size:10.5px}.tree-change-details dt{font-weight:700;color:#645548}.tree-change-details dd{margin:0;color:#4c4036}.tree-change-note{width:100%;box-sizing:border-box;border:1px solid rgba(91,72,55,.2);border-radius:9px;padding:8px;font:inherit;background:white}.tree-change-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+    .tree-change-review-panel{margin-bottom:18px}.tree-change-review-heading{display:flex;justify-content:space-between;gap:16px;align-items:start}.tree-change-review-heading h2{display:flex;align-items:center;gap:9px}.tree-change-count{display:inline-flex;min-width:24px;height:24px;padding:0 7px;align-items:center;justify-content:center;border-radius:999px;background:#5e4935;color:white;font-size:11px}.tree-change-live{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:5px 8px;border-radius:999px;background:#edf5ec;color:#4d704f}.tree-change-queue{display:grid;gap:10px;margin-top:12px}.tree-change-card{border:1px solid rgba(91,72,55,.2);border-radius:14px;background:#fffaf2;padding:13px}.tree-change-card.is-conflict{border-color:rgba(164,105,44,.45);background:#fff8ec}.tree-change-top{display:flex;justify-content:space-between;gap:12px;align-items:start}.tree-change-top strong{font-size:13px;color:#3f3329}.tree-change-meta{font-size:10px;color:#74675b;margin:3px 0 0}.tree-change-status{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:4px 7px;background:#f0e4d5;color:#68584a}.tree-change-status.conflict{background:#f7e4bd;color:#7a5725}.tree-change-details{display:grid;grid-template-columns:minmax(115px,.38fr) 1fr;gap:5px 10px;margin:11px 0;font-size:10.5px}.tree-change-details dt{font-weight:700;color:#645548}.tree-change-details dd{margin:0;color:#4c4036;white-space:pre-wrap}.tree-change-note{width:100%;box-sizing:border-box;border:1px solid rgba(91,72,55,.2);border-radius:9px;padding:8px;font:inherit;background:white}.tree-change-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
   `;
   document.head.appendChild(style);
 }
