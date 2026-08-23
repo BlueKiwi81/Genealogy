@@ -150,6 +150,7 @@ function enhanceForm(form) {
   const grid = form.querySelector('.tree-edit-grid');
   if (!grid) return;
 
+  const isEdit = form.id === 'editPersonSuggestionForm';
   const preferredLabel = labelFor(form, 'preferred_name');
   const genderLabel = labelFor(form, 'gender');
   const occupationLabel = labelFor(form, 'occupation_summary');
@@ -160,10 +161,11 @@ function enhanceForm(form) {
   const birthPlaceLabel = labelFor(form, 'birth_place');
 
   const existingDeathDate = form.elements.namedItem('death_date')?.value || '';
-  const inferredStatus = existingDeathDate ? 'deceased' : 'unknown';
+  const inferredStatus = existingDeathDate ? 'deceased' : (isEdit ? '' : 'unknown');
 
   const statusLabel = document.createElement('label');
   statusLabel.innerHTML = `Are they alive?<select name="life_status">
+    ${isEdit ? '<option value="" selected>Keep current / not changing</option>' : ''}
     <option value="unknown"${inferredStatus === 'unknown' ? ' selected' : ''}>Unknown / not sure</option>
     <option value="alive">Yes</option>
     <option value="deceased"${inferredStatus === 'deceased' ? ' selected' : ''}>No - deceased</option>
@@ -174,7 +176,7 @@ function enhanceForm(form) {
 
   const residenceLabel = document.createElement('label');
   residenceLabel.className = 'smart-profile-wide';
-  residenceLabel.innerHTML = 'Where did they live?<textarea name="residence_summary" rows="2" placeholder="Places or areas, even if dates are not known"></textarea>';
+  residenceLabel.innerHTML = `Where did they live?<textarea name="residence_summary" rows="2" placeholder="${isEdit ? 'Add or replace this only if you want to change it' : 'Places or areas, even if dates are not known'}"></textarea>`;
   grid.insertAdjacentElement('afterend', residenceLabel);
 
   const deathBlock = document.createElement('div');
@@ -186,9 +188,9 @@ function enhanceForm(form) {
   moveLabel(deathGrid, deathDateLabel);
   moveLabel(deathGrid, deathPlaceLabel);
   const restTypeLabel = document.createElement('label');
-  restTypeLabel.innerHTML = '<span>Buried or cremated?</span><select name="final_rest_type"><option value="">Unknown / not recorded</option><option value="buried">Buried</option><option value="cremated">Cremated</option><option value="other">Other</option><option value="unknown">Unknown</option></select>';
+  restTypeLabel.innerHTML = `<span>Buried or cremated?</span><select name="final_rest_type"><option value="">${isEdit ? 'Keep current / not changing' : 'Unknown / not recorded'}</option><option value="buried">Buried</option><option value="cremated">Cremated</option><option value="other">Other</option><option value="unknown">Unknown</option></select>`;
   const restPlaceLabel = document.createElement('label');
-  restPlaceLabel.innerHTML = '<span>Burial / cremation place</span><input name="final_rest_place" placeholder="Cemetery, crematorium or place" />';
+  restPlaceLabel.innerHTML = `<span>Burial / cremation place</span><input name="final_rest_place" placeholder="${isEdit ? 'Leave blank to keep current' : 'Cemetery, crematorium or place'}" />`;
   deathGrid.append(restTypeLabel, restPlaceLabel);
   deathBlock.appendChild(deathGrid);
   residenceLabel.insertAdjacentElement('afterend', deathBlock);
@@ -201,7 +203,7 @@ function enhanceForm(form) {
   moveLabel(extraBody, genderLabel);
   moveLabel(extraBody, occupationLabel);
   const militaryLabel = document.createElement('label');
-  militaryLabel.innerHTML = '<span>Military or other service</span><textarea name="military_service_summary" rows="2" placeholder="Military, railway, police, church, public service or other significant service"></textarea>';
+  militaryLabel.innerHTML = `<span>Military or other service</span><textarea name="military_service_summary" rows="2" placeholder="${isEdit ? 'Leave blank to keep current' : 'Military, railway, police, church, public service or other significant service'}"></textarea>`;
   extraBody.appendChild(militaryLabel);
   moveLabel(extraBody, narrativeLabel);
   deathBlock.insertAdjacentElement('afterend', extra);
@@ -240,14 +242,32 @@ function collectHistoricalContext(form) {
 }
 
 function collectExtras(form) {
-  return {
-    life_status: form.elements.namedItem('life_status')?.value || 'unknown',
-    residence_summary: form.elements.namedItem('residence_summary')?.value?.trim() || null,
-    final_rest_type: form.elements.namedItem('final_rest_type')?.value || null,
-    final_rest_place: form.elements.namedItem('final_rest_place')?.value?.trim() || null,
-    military_service_summary: form.elements.namedItem('military_service_summary')?.value?.trim() || null,
-    historical_context: collectHistoricalContext(form),
-  };
+  const isEdit = form.id === 'editPersonSuggestionForm';
+  const result = {};
+  const lifeStatus = form.elements.namedItem('life_status')?.value || '';
+  const residence = form.elements.namedItem('residence_summary')?.value?.trim() || '';
+  const restType = form.elements.namedItem('final_rest_type')?.value || '';
+  const restPlace = form.elements.namedItem('final_rest_place')?.value?.trim() || '';
+  const military = form.elements.namedItem('military_service_summary')?.value?.trim() || '';
+  const historical = collectHistoricalContext(form);
+
+  if (isEdit) {
+    if (lifeStatus) result.life_status = lifeStatus;
+    if (residence) result.residence_summary = residence;
+    if (restType) result.final_rest_type = restType;
+    if (restPlace) result.final_rest_place = restPlace;
+    if (military) result.military_service_summary = military;
+    if (Object.keys(historical).length) result.historical_context = historical;
+    return result;
+  }
+
+  result.life_status = lifeStatus || 'unknown';
+  result.residence_summary = residence || null;
+  result.final_rest_type = restType || null;
+  result.final_rest_place = restPlace || null;
+  result.military_service_summary = military || null;
+  result.historical_context = historical;
+  return result;
 }
 
 function captureProfileSubmit(event) {
