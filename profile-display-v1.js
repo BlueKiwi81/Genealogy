@@ -195,8 +195,8 @@ function tidyFamilySnapshot() {
   const snapshot = treeCanvas?.querySelector('.family-snapshot');
   if (!snapshot) return;
 
-  snapshot.querySelectorAll('.snapshot-siblings-wrap').forEach((node) => node.remove());
-  snapshot.querySelector('.snapshot-waist-row')?.classList.add('snapshot-focus-only');
+  snapshot.querySelector('.snapshot-waist-row')?.classList.remove('snapshot-focus-only');
+  const siblingCount = snapshot.querySelectorAll('.snapshot-siblings-wrap > .snapshot-family-cluster').length;
 
   const grid = snapshot.querySelector('.snapshot-descendant-grid');
   const descendants = snapshot.querySelector('.snapshot-descendants');
@@ -217,11 +217,11 @@ function tidyFamilySnapshot() {
     const viewSummary = document.getElementById('viewSummary');
     const treeStatus = document.getElementById('treeStatus');
     if (viewSummary) {
-      viewSummary.textContent = `Family snapshot: parents and grandparents above ${selectedCentreLabel()}, with children, partners and grandchildren grouped clearly below.`;
+      viewSummary.textContent = `Family snapshot: parents and grandparents above ${selectedCentreLabel()}, siblings at the same generation, with children, partners and grandchildren grouped clearly below.`;
     }
     if (treeStatus) {
       const childCount = grid?.children?.length || 0;
-      treeStatus.textContent = `${childCount} child${childCount === 1 ? '' : 'ren'} shown for this focus family.`;
+      treeStatus.textContent = `${siblingCount} sibling${siblingCount === 1 ? '' : 's'} and ${childCount} child${childCount === 1 ? '' : 'ren'} shown for this focus family.`;
     }
   }
 }
@@ -275,7 +275,7 @@ function installSnapshotAndPrintStyles() {
   const style = document.createElement('style');
   style.id = 'snapshotTidyPrintStyles';
   style.textContent = `
-    .snapshot-focus-only{justify-content:center!important}.snapshot-focus-only .snapshot-focus-wrap{margin-inline:auto}.snapshot-siblings-wrap{display:none!important}
+    .snapshot-waist-row{flex-wrap:wrap}.snapshot-siblings-wrap{display:flex!important;flex-wrap:wrap;justify-content:center}.snapshot-focus-wrap{margin-inline:auto}
     .snapshot-descendant-grid-tidy{position:relative;padding-top:25px!important;align-items:stretch!important}.snapshot-descendant-grid-tidy::before{content:"";position:absolute;top:0;left:var(--snapshot-branch-inset,16.66%);right:var(--snapshot-branch-inset,16.66%);border-top:1.5px solid #a89482}.snapshot-descendant-grid-tidy[data-child-count="1"]::before{display:none}.snapshot-parent-rail{width:1.5px;height:22px;background:#9e8876;margin:0 auto}.snapshot-descendant-grid-tidy>.descendant-cluster{position:relative;padding:17px 9px 9px;border:1px solid rgba(89,72,57,.13);border-radius:14px;background:rgba(255,250,242,.62)}.snapshot-descendant-grid-tidy>.descendant-cluster::before{content:"";position:absolute;top:0;left:50%;height:17px;border-left:1.5px solid #a89482}.snapshot-descendant-grid-tidy>.descendant-cluster .snapshot-cluster-stem{height:15px}
     .print-view-button{white-space:nowrap}.print-tree-header{display:none}
     @media print{
@@ -288,7 +288,7 @@ function installSnapshotAndPrintStyles() {
       .print-tree-header{display:block!important;visibility:visible!important;text-align:center;margin:0 0 4mm;color:#352c25}.print-tree-kicker{margin:0 0 1mm;font-size:7.5pt;letter-spacing:.12em;text-transform:uppercase}.print-tree-header h1{margin:0;font-size:15pt;line-height:1.15}.print-tree-header p:last-child{margin:1.5mm 0 0;font-size:9pt;color:#66584b}
       #treeCanvas{visibility:visible!important;overflow:visible!important;width:100%!important;min-height:0!important;padding:0!important;margin:0!important;background:#fff!important}
       #treeCanvas>svg{display:block!important;width:auto!important;height:172mm!important;max-width:100%!important;margin:0 auto!important;overflow:visible!important}
-      .snapshot-scroll{overflow:visible!important;width:100%!important}.family-snapshot{min-width:0!important;width:100%!important;padding:0!important}.snapshot-ancestry{gap:7mm!important}.snapshot-lineage-branch{padding:3mm!important}.snapshot-waist{padding:3mm 2mm!important}.snapshot-descendants{padding:3mm 1mm 0!important}.snapshot-descendant-grid{gap:3mm!important;justify-content:center!important}.snapshot-family-cluster{min-width:0!important;max-width:none!important;flex:1 1 0!important}.snapshot-person-card{min-width:0!important;max-width:none!important;padding:2mm!important;min-height:11mm!important}.snapshot-person-card strong{font-size:7.5pt!important}.snapshot-person-card span{font-size:6.4pt!important}.snapshot-section-label,.snapshot-note{font-size:6.5pt!important}.snapshot-note{margin-top:2mm!important}.snapshot-descendant-grid-tidy>.descendant-cluster{padding:4mm 2mm 2mm!important;break-inside:avoid!important}
+      .snapshot-scroll{overflow:visible!important;width:100%!important}.family-snapshot{min-width:0!important;width:100%!important;padding:0!important}.snapshot-ancestry{gap:7mm!important}.snapshot-lineage-branch{padding:3mm!important}.snapshot-waist{padding:3mm 2mm!important}.snapshot-siblings-wrap{display:flex!important;gap:2mm!important}.snapshot-descendants{padding:3mm 1mm 0!important}.snapshot-descendant-grid{gap:3mm!important;justify-content:center!important}.snapshot-family-cluster{min-width:0!important;max-width:none!important;flex:1 1 0!important}.snapshot-person-card{min-width:0!important;max-width:none!important;padding:2mm!important;min-height:11mm!important}.snapshot-person-card strong{font-size:7.5pt!important}.snapshot-person-card span{font-size:6.4pt!important}.snapshot-section-label,.snapshot-note{font-size:6.5pt!important}.snapshot-note{margin-top:2mm!important}.snapshot-descendant-grid-tidy>.descendant-cluster{padding:4mm 2mm 2mm!important;break-inside:avoid!important}
     }
   `;
   document.head.appendChild(style);
