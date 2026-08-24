@@ -179,6 +179,7 @@ window.fetch = async function genealogyOverlayFetch(input, init) {
 
     const authHeader = headerValue(input, init, 'authorization');
     if (!authHeader?.startsWith('Bearer ')) return response;
+    window.__genealogyAuthHeader = authHeader;
     const userId = jwtSubject(authHeader.slice(7));
     if (!userId) return response;
 
@@ -204,3 +205,5 @@ function clearPendingCache() {
 }
 
 document.addEventListener('genealogy:tree-suggestions-updated', clearPendingCache);
+
+import('./research-frontier-v1.js?v=1').catch(() => {});
