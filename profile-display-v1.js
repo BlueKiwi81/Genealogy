@@ -1,8 +1,5 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/+esm';
+import { supabase } from './supabase-client-v1.js';
 
-const SUPABASE_URL = 'https://jkakvpsiiffnidggcqzc.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_h_0XIxzs33psSZTyKPGr8w_aJoVLw92';
-const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 const personDetails = document.getElementById('personDetails');
 const personName = document.getElementById('personName');
@@ -88,16 +85,25 @@ async function appendExtraDetails() {
   if (!state.session || !personDetails || !state.selectedId || state.rendering) return;
   state.rendering = true;
   try {
-    personDetails.querySelector('.expanded-profile-details')?.remove();
+    const existing = personDetails.querySelector('.expanded-profile-details');
     let person = state.people.get(state.selectedId) || null;
     if (!person && String(state.selectedId).startsWith('pending:')) person = await pendingPerson(state.selectedId);
-    if (!hasExtraData(person)) return;
+    if (!hasExtraData(person)) {
+      existing?.remove();
+      return;
+    }
     const rows = renderRows(person);
-    if (!rows.length) return;
-    const section = document.createElement('div');
+    if (!rows.length) {
+      existing?.remove();
+      return;
+    }
+    const signature = JSON.stringify({ personId: state.selectedId, rows });
+    if (existing?.dataset.profileSignature === signature) return;
+    const section = existing || document.createElement('div');
     section.className = 'expanded-profile-details';
+    section.dataset.profileSignature = signature;
     section.innerHTML = `<div class="expanded-profile-heading">More about this person</div>${rows.map(([label, value]) => `<div class="detail-line expanded-profile-line"><strong>${esc(label)}</strong>${esc(value)}</div>`).join('')}`;
-    personDetails.appendChild(section);
+    if (!existing) personDetails.appendChild(section);
   } finally {
     state.rendering = false;
   }
@@ -154,8 +160,11 @@ centreSelect?.addEventListener('change', () => {
 });
 
 if (personDetails) {
-  const observer = new MutationObserver(() => {
-    if (!state.rendering) scheduleRender(15);
+  const observer = new MutationObserver((mutations) => {
+    const externalChange = mutations.some((mutation) =>
+      [...mutation.addedNodes, ...mutation.removedNodes]
+        .some((node) => !(node instanceof Element) || !node.classList.contains('expanded-profile-details')));
+    if (externalChange && !state.rendering) scheduleRender(15);
   });
   observer.observe(personDetails, { childList: true, subtree: false });
 }

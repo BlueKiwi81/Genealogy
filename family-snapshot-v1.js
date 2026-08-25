@@ -1,8 +1,5 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/+esm';
+import { supabase } from './supabase-client-v1.js';
 
-const SUPABASE_URL = 'https://jkakvpsiiffnidggcqzc.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_h_0XIxzs33psSZTyKPGr8w_aJoVLw92';
-const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 const ui = {
   centreSelect: document.getElementById('centreSelect'),

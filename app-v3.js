@@ -1,7 +1,5 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/+esm';
+import { supabase } from './supabase-client-v1.js';
 
-const SUPABASE_URL = 'https://jkakvpsiiffnidggcqzc.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_h_0XIxzs33psSZTyKPGr8w_aJoVLw92';
 const REGISTRATION_KEY = 'genealogyRegistrationDraft';
 const FRONTIER_KEY = 'genealogyShowResearchFrontier';
 const RENDER_DEPTH_CAP = 6;
@@ -9,7 +7,6 @@ const LOAD_TIMEOUT_MS = 18000;
 const SOURCE_RANK = { documented: 6, strong: 5, family_supplied: 4, probable: 3, hypothesis: 2, unresolved: 1 };
 const PALETTE = ['#e7bea0', '#b8d5de', '#cbd6a6', '#d2c2df'];
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const $ = (id) => document.getElementById(id);
 
 const ui = {
@@ -66,6 +63,20 @@ function setMessage(el, text = '', type = '') {
   if (!el) return;
   el.textContent = text;
   el.className = `message${type ? ` ${type}` : ''}`;
+}
+
+function showArchiveLoader() {
+  if (!ui.treeCanvas) return;
+  ui.treeCanvas.setAttribute('aria-busy', 'true');
+  const loader = document.createElement('div');
+  loader.className = 'archive-loader';
+  loader.setAttribute('role', 'status');
+  loader.innerHTML = '<span class="archive-spinner" aria-hidden="true"></span><strong>Building the family view</strong><span>Loading people, relationships and research notes...</span>';
+  ui.treeCanvas.replaceChildren(loader);
+}
+
+function finishArchiveLoader() {
+  ui.treeCanvas?.setAttribute('aria-busy', 'false');
 }
 
 function esc(value) {
@@ -754,6 +765,7 @@ function renderTree() {
   if (familyMode) renderFamilyCentre(svg, ns, a, b);
   else renderSingleCentre(svg, ns, a);
   ui.treeCanvas.replaceChildren(svg);
+  finishArchiveLoader();
 
   if (ui.viewTitle) ui.viewTitle.textContent = familyMode ? `${firstName(a)} & ${firstName(b)}` : canonicalName(a);
   if (ui.viewSummary) ui.viewSummary.textContent = researchMax > RENDER_DEPTH_CAP
@@ -770,6 +782,7 @@ function scheduleRender() {
 
 function showArchiveLoadError(error) {
   state.loaded = false;
+  finishArchiveLoader();
   setMessage(ui.treeStatus, `The family archive did not finish loading: ${error?.message || 'unknown error'}`, 'error');
   if (ui.treeCanvas) {
     const host = document.createElement('div');
@@ -793,7 +806,7 @@ async function enterArchive(force = false) {
   if (state.profile?.person_id) ui.centreMe?.classList.remove('hidden');
   ensureControls();
   setMessage(ui.treeStatus, 'Loading family archive...');
-  if (ui.treeCanvas) ui.treeCanvas.replaceChildren();
+  showArchiveLoader();
   try {
     await loadFamilyData(force);
     populateCentreSelect();
