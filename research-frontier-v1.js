@@ -51,4 +51,8 @@ window.__genealogyResearchFrontierEnabled = () => localStorage.getItem(FRONTIER_
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installToggle);
 else installToggle();
 
-import('./tree-ui-polish-v1.js?v=1').catch(() => {});
+Promise.allSettled([
+  import('./tree-ui-polish-v1.js?v=2'),
+  import('./tree-control-deck-v1.js?v=3'),
+  import('./frontier-alternates-v1.js?v=2'),
+]);
