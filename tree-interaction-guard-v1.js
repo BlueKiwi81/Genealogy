@@ -1,7 +1,5 @@
 const panel = document.querySelector('.tree-panel');
-const canvas = document.getElementById('treeCanvas');
 let lastModeNode = null;
-let repairingFan = false;
 
 function installStyles() {
   if (document.getElementById('treeInteractionGuardStyles')) return;
@@ -56,39 +54,10 @@ function reinforcePerspectiveButtons() {
   });
 }
 
-function snapshotActive() {
-  return document.querySelector('[data-tree-perspective="snapshot"][aria-pressed="true"]') !== null;
-}
-
-function ensureIdBasedFanRenderer() {
-  if (!canvas || snapshotActive() || repairingFan) return;
-  const svg = canvas.querySelector('svg');
-  if (!svg) return;
-
-  const personNodes = [...svg.querySelectorAll('.person-node,.family-centre-person,.family-child-node')];
-  if (!personNodes.length) return;
-
-  // The adaptive fan is the canonical renderer because every real person node carries
-  // the stable database person ID. Older renderers can briefly win an event race and
-  // are unsafe around namesakes. If that happens, immediately ask the adaptive renderer
-  // to repaint rather than allowing any name-only person identity to remain on screen.
-  const hasNameOnlyNode = personNodes.some(node => !node.dataset.personId);
-  if (!hasNameOnlyNode) return;
-
-  const depth = document.getElementById('generationDepth');
-  if (!depth || depth.dataset.adaptive !== '1') return;
-  repairingFan = true;
-  queueMicrotask(() => {
-    depth.dispatchEvent(new Event('change', { bubbles: true }));
-    window.setTimeout(() => { repairingFan = false; }, 30);
-  });
-}
-
 function apply() {
   installStyles();
   ensureFreshFamilyDefault();
   reinforcePerspectiveButtons();
-  ensureIdBasedFanRenderer();
 }
 
 apply();
