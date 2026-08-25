@@ -1,6 +1,7 @@
 const treeCanvas = document.getElementById('treeCanvas');
 const treePanel = document.querySelector('.tree-panel');
 let repairQueued = false;
+let snapshotRepairQueued = false;
 
 function adaptiveSvg(svg) {
   return Boolean(svg?.querySelector('[data-fan-level]'));
@@ -18,6 +19,18 @@ function requestAdaptiveRender() {
     if (depth) depth.dispatchEvent(new Event('change', { bubbles: true }));
     else if (mode) mode.dispatchEvent(new Event('change', { bubbles: true }));
     else window.setTimeout(requestAdaptiveRender, 60);
+  });
+}
+
+function requestSnapshotRender() {
+  if (snapshotRepairQueued || !treePanel?.classList.contains('snapshot-active')) return;
+  snapshotRepairQueued = true;
+  queueMicrotask(() => {
+    snapshotRepairQueued = false;
+    if (treeCanvas?.querySelector('.family-snapshot')) return;
+    const button = document.querySelector('[data-tree-perspective="snapshot"]');
+    if (button) button.click();
+    else window.setTimeout(requestSnapshotRender, 80);
   });
 }
 
@@ -100,7 +113,10 @@ function polishSnapshot() {
 
 function stabilise() {
   if (!treeCanvas) return;
-  if (polishSnapshot()) return;
+  if (treePanel?.classList.contains('snapshot-active')) {
+    if (!polishSnapshot()) requestSnapshotRender();
+    return;
+  }
   const svg = treeCanvas.querySelector(':scope > svg');
   if (!svg) return;
   if (!adaptiveSvg(svg)) {
