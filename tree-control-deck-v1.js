@@ -1,6 +1,5 @@
 const panel = document.querySelector('.tree-panel');
 const head = panel?.querySelector('.panel-head');
-const status = document.getElementById('treeStatus');
 let attempts = 0;
 
 function make(tag, className, text = '') {
@@ -51,6 +50,17 @@ function arrange() {
   const perspectiveBlock = deck.querySelector('[data-deck-perspective]');
   const evidenceBlock = deck.querySelector('[data-deck-evidence]');
   const outputBlock = deck.querySelector('[data-deck-output]');
+  const frontier = panel.querySelector('.frontier-toggle-row');
+
+  // Research-frontier installs itself relative to the original panel head. Do not
+  // move Centre person away until that toggle exists, otherwise a fast module load
+  // can make the frontier installer miss its anchor.
+  if (!frontier) {
+    updateSummary();
+    attempts += 1;
+    if (attempts < 60) window.setTimeout(arrange, 100);
+    return;
+  }
 
   const centreLabel = panel.querySelector('.select-label:has(#centreSelect)');
   if (centreLabel && centreLabel.parentElement !== primary) {
@@ -67,8 +77,7 @@ function arrange() {
   const perspective = panel.querySelector('#treePerspectiveSwitch');
   if (perspective && perspective.parentElement !== perspectiveBlock) perspectiveBlock.appendChild(perspective);
 
-  const frontier = panel.querySelector('.frontier-toggle-row');
-  if (frontier && frontier.parentElement !== evidenceBlock) {
+  if (frontier.parentElement !== evidenceBlock) {
     const helper = evidenceBlock.querySelector('.deck-help');
     evidenceBlock.insertBefore(frontier, helper || null);
   }
@@ -81,7 +90,7 @@ function arrange() {
 
   updateSummary();
 
-  const complete = centreLabel && enhanced && perspective && frontier;
+  const complete = centreLabel && enhanced && perspective;
   attempts += 1;
   if (!complete && attempts < 60) window.setTimeout(arrange, 100);
 }
