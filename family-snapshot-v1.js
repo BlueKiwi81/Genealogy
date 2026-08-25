@@ -1,4 +1,5 @@
 import { supabase } from './supabase-client-v1.js';
+import { preferredFamilyPartnerEntry } from './relationship-rules-v1.js';
 
 
 const ui = {
@@ -53,9 +54,7 @@ function partnerEdgesOf(personId) {
     .map((relationship) => ({ relationship, person: getPerson(relationship.person1_id === personId ? relationship.person2_id : relationship.person1_id) })).filter((entry) => entry.person);
 }
 function currentPartnerEntry(personId) {
-  const edges = partnerEdgesOf(personId);
-  return edges.find((entry) => entry.relationship.relationship_status === 'current' && entry.relationship.relationship_type !== 'former_spouse')
-    || edges.find((entry) => entry.relationship.relationship_status === 'ended_by_death' && ['spouse', 'partner'].includes(entry.relationship.relationship_type)) || null;
+  return preferredFamilyPartnerEntry(partnerEdgesOf(personId));
 }
 function siblingsOf(personId) {
   const ids = new Set(); const parentIds = parentEdgesOf(personId).map((entry) => entry.person.id);

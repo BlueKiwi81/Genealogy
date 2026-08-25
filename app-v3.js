@@ -1,4 +1,5 @@
 import { supabase } from './supabase-client-v1.js';
+import { preferredFamilyPartnerEntry } from './relationship-rules-v1.js';
 
 const REGISTRATION_KEY = 'genealogyRegistrationDraft';
 const FRONTIER_KEY = 'genealogyShowResearchFrontier';
@@ -321,10 +322,7 @@ function partnerEdgesOf(personId) {
 }
 
 function currentPartnerOf(personId) {
-  const edges = partnerEdgesOf(personId);
-  return edges.find(({ relationship }) => relationship.relationship_status === 'current' && relationship.relationship_type !== 'former_spouse')?.person
-    || edges.find(({ relationship }) => relationship.relationship_status === 'ended_by_death' && ['spouse', 'partner'].includes(relationship.relationship_type))?.person
-    || null;
+  return preferredFamilyPartnerEntry(partnerEdgesOf(personId))?.person || null;
 }
 
 function siblingsOf(personId) {

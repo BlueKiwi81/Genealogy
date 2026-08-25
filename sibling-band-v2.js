@@ -1,4 +1,5 @@
 import { supabase } from './supabase-client-v1.js';
+import { preferredFamilyPartnerEntry } from './relationship-rules-v1.js';
 
 
 const APPROVED_KNOWN_AS = new Set(['documented', 'strong', 'family_supplied']);
@@ -57,12 +58,7 @@ function partnerEdgesOf(personId) {
 }
 
 function familyPartnerOf(personId) {
-  const edges = partnerEdgesOf(personId);
-  const current = edges.find((entry) => entry.relationship.relationship_status === 'current'
-    && entry.relationship.relationship_type !== 'former_spouse');
-  if (current) return current.person;
-  return edges.find((entry) => entry.relationship.relationship_status === 'ended_by_death'
-    && ['spouse', 'partner'].includes(entry.relationship.relationship_type))?.person || null;
+  return preferredFamilyPartnerEntry(partnerEdgesOf(personId))?.person || null;
 }
 
 function siblingEvidenceStatus(personId, siblingId) {
