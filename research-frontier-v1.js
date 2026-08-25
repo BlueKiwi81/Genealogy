@@ -55,5 +55,5 @@ Promise.allSettled([
   import('./tree-ui-polish-v1.js?v=2'),
   import('./tree-control-deck-v1.js?v=3'),
   import('./tree-interaction-guard-v1.js?v=1'),
-  import('./frontier-alternates-v1.js?v=2'),
+  import('./frontier-alternates-v1.js?v=3'),
 ]);
