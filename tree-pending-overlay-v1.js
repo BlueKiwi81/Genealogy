@@ -206,4 +206,4 @@ function clearPendingCache() {
 
 document.addEventListener('genealogy:tree-suggestions-updated', clearPendingCache);
 
-import('./research-frontier-v1.js?v=1').catch(() => {});
+import('./research-frontier-v1.js?v=2').catch(() => {});
