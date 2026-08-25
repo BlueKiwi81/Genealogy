@@ -59,6 +59,8 @@ let routeInFlightFor = null;
 let routeCompleteFor = null;
 let archiveLoadPromise = null;
 let renderFrame = null;
+let mapViewModulePromise = null;
+let mapRenderToken = 0;
 
 function setMessage(el, text = '', type = '') {
   if (!el) return;
@@ -382,6 +384,7 @@ function ensureControls() {
         <select id="treeViewMode">
           <option value="family">Family view</option>
           <option value="ancestry">Person ancestry</option>
+          <option value="map">Map view</option>
         </select>
       </label>
       <label class="select-label enhanced-select-label">Generations
@@ -773,6 +776,28 @@ function renderSingleCentre(svg, ns, item) {
   svg.appendChild(group);
 }
 
+async function renderMapMode(centre, partner, token) {
+  try {
+    mapViewModulePromise ||= import('./map-view-v1.js');
+    const mapView = await mapViewModulePromise;
+    if (token !== mapRenderToken || state.mode !== 'map') return;
+    await mapView.renderMapView({
+      centre,
+      partner,
+      people: state.people,
+      relationships: state.relationships,
+      palette: PALETTE,
+    });
+    if (token !== mapRenderToken || state.mode !== 'map') return;
+    finishArchiveLoader();
+  } catch (error) {
+    if (token !== mapRenderToken || state.mode !== 'map') return;
+    ui.treeCanvas.innerHTML = `<div class="map-view-error"><strong>Map view could not load.</strong><span>${esc(error?.message || 'The ordinary family tree is still available.')}</span></div>`;
+    setMessage(ui.treeStatus, 'Map view is unavailable. Family and ancestry views are unaffected.', 'error');
+    finishArchiveLoader();
+  }
+}
+
 function renderTree() {
   renderFrame = null;
   if (!state.loaded || !state.centreId || !ui.treeCanvas) return;
@@ -780,6 +805,27 @@ function renderTree() {
   const a = person(state.centreId);
   if (!a) return;
   const b = state.mode === 'family' ? currentPartnerOf(a.id) : null;
+  const mapPartner = state.mode === 'map' ? currentPartnerOf(a.id) : null;
+  const treePanel = ui.panelHead?.closest('.tree-panel');
+  const depthLabel = $('generationDepth')?.closest('label');
+
+  if (state.mode === 'map') {
+    treePanel?.classList.add('map-view-active');
+    if (depthLabel) depthLabel.hidden = true;
+    const token = ++mapRenderToken;
+    ui.treeCanvas.innerHTML = '<div class="map-view-loading" role="status">Loading historical places only for this map view...</div>';
+    if (ui.viewTitle) ui.viewTitle.textContent = `${firstName(a)}${mapPartner ? ` & ${firstName(mapPartner)}` : ''} - map`;
+    if (ui.viewSummary) ui.viewSummary.textContent = 'Documented places are shown by dynamically calculated family branch. Routes appear only when movement has been separately evidenced.';
+    setMessage(ui.treeStatus, 'Loading reviewed historical event locations...', '');
+    renderDetails(a);
+    void renderMapMode(a, mapPartner, token);
+    return;
+  }
+
+  mapRenderToken += 1;
+  treePanel?.classList.remove('map-view-active');
+  if (depthLabel) depthLabel.hidden = false;
+  if (mapViewModulePromise) void mapViewModulePromise.then((module) => module.teardownMapView()).catch(() => {});
   const familyMode = Boolean(b && state.mode === 'family');
   const researchMax = researchDepth([a, b].filter(Boolean));
   const safeMax = Math.min(researchMax, RENDER_DEPTH_CAP);
