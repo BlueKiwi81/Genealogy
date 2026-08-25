@@ -8,7 +8,6 @@ window.__genealogyOriginalFetch = originalFetch;
 let cache = { userId: null, at: 0, changes: [] };
 
 function headerValue(input, init, name) {
-  const wanted = name.toLowerCase();
   const fromInit = new Headers(init?.headers || {}).get(name);
   if (fromInit) return fromInit;
   if (input instanceof Request) return input.headers.get(name);
@@ -206,4 +205,4 @@ function clearPendingCache() {
 
 document.addEventListener('genealogy:tree-suggestions-updated', clearPendingCache);
 
-import('./research-frontier-v1.js?v=2').catch(() => {});
+import('./research-frontier-v1.js?v=3').catch(() => {});
