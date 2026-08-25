@@ -14,6 +14,8 @@ if (!document.querySelector('link[data-person-photos-css]')) {
 
 const personName = document.getElementById('personName');
 const personDetails = document.getElementById('personDetails');
+const treeCanvas = document.getElementById('treeCanvas');
+const centreSelect = document.getElementById('centreSelect');
 let photosHost = document.getElementById('personPhotos');
 if (!photosHost && personDetails) {
   photosHost = document.createElement('div');
@@ -21,9 +23,9 @@ if (!photosHost && personDetails) {
   personDetails.insertAdjacentElement('afterend', photosHost);
 }
 
-let people = [];
-let peopleByName = new Map();
+let peopleById = new Map();
 let currentPerson = null;
+let currentPersonId = null;
 let session = null;
 let canEdit = false;
 let loadToken = 0;
@@ -45,6 +47,13 @@ function safeExt(file) {
   return map[file?.type] || 'img';
 }
 
+function clearPhotos() {
+  loadToken += 1;
+  currentPerson = null;
+  currentPersonId = null;
+  photosHost?.replaceChildren();
+}
+
 function ensureDialog() {
   let dialog = document.getElementById('personPhotoDialog');
   if (dialog) return dialog;
@@ -52,7 +61,7 @@ function ensureDialog() {
   dialog.id = 'personPhotoDialog';
   dialog.className = 'photo-dialog';
   dialog.innerHTML = `
-    <button class="photo-dialog-close" type="button" aria-label="Close photograph">×</button>
+    <button class="photo-dialog-close" type="button" aria-label="Close photograph">x</button>
     <img class="photo-dialog-image" alt="" />
     <div class="photo-dialog-copy"></div>`;
   dialog.querySelector('.photo-dialog-close').addEventListener('click', () => dialog.close());
@@ -69,7 +78,7 @@ function openPhoto(photo, signedUrl) {
   const copy = dialog.querySelector('.photo-dialog-copy');
   img.src = signedUrl;
   img.alt = photo.caption || `Family photograph of ${canonicalName(currentPerson)}`;
-  const meta = [photo.date_text, photo.place].filter(Boolean).join(' · ');
+  const meta = [photo.date_text, photo.place].filter(Boolean).join(' | ');
   copy.innerHTML = `${photo.caption ? `<strong>${esc(photo.caption)}</strong>` : ''}${meta ? `<span>${esc(meta)}</span>` : ''}`;
   dialog.showModal();
 }
@@ -98,7 +107,7 @@ function uploadFormHtml() {
 async function renderPhotos(person) {
   if (!photosHost || !person) return;
   const token = ++loadToken;
-  photosHost.innerHTML = '<div class="photo-loading">Loading photographs…</div>';
+  photosHost.innerHTML = '<div class="photo-loading">Loading photographs...</div>';
 
   const { data: photos, error } = await supabase
     .from('person_photos')
@@ -107,7 +116,7 @@ async function renderPhotos(person) {
     .order('is_primary', { ascending: false })
     .order('created_at', { ascending: true });
 
-  if (token !== loadToken) return;
+  if (token !== loadToken || currentPersonId !== person.id) return;
   if (error) {
     photosHost.innerHTML = canEdit ? `<div class="photo-empty">Photographs could not be loaded.</div>${uploadFormHtml()}` : '';
     bindUploadControls(person);
@@ -121,7 +130,7 @@ async function renderPhotos(person) {
     } catch (_) {}
   }
 
-  if (token !== loadToken) return;
+  if (token !== loadToken || currentPersonId !== person.id) return;
   if (!items.length && !canEdit) {
     photosHost.replaceChildren();
     return;
@@ -145,7 +154,7 @@ async function renderPhotos(person) {
   photosHost.querySelectorAll('.person-photo-thumb').forEach((button) => {
     button.addEventListener('click', () => {
       const item = items[Number(button.dataset.photoIndex)];
-      if (item) openPhoto(item.photo, item.url);
+      if (item && currentPersonId === person.id) openPhoto(item.photo, item.url);
     });
   });
   bindUploadControls(person);
@@ -163,6 +172,7 @@ function bindUploadControls(person) {
 
 async function uploadPhoto(event, person) {
   event.preventDefault();
+  if (!person || currentPersonId !== person.id) return;
   const form = event.currentTarget;
   const message = form.querySelector('#personPhotoUploadMessage');
   const file = form.querySelector('#personPhotoFile')?.files?.[0];
@@ -183,7 +193,7 @@ async function uploadPhoto(event, person) {
   const folder = person.slug || person.id;
   const path = `${folder}/${crypto.randomUUID()}.${safeExt(file)}`;
 
-  message.textContent = 'Uploading…';
+  message.textContent = 'Uploading...';
   const { error: uploadError } = await supabase.storage.from('person-photos').upload(path, file, {
     cacheControl: '3600', contentType: file.type || undefined, upsert: false,
   });
@@ -212,19 +222,39 @@ async function uploadPhoto(event, person) {
   await renderPhotos(person);
 }
 
-async function selectCurrentPerson() {
-  if (!personName || !photosHost || !people.length) return;
-  const name = personName.textContent.trim();
-  if (!name || name === 'Choose a person') {
-    photosHost.replaceChildren();
-    currentPerson = null;
+async function selectPersonById(personId) {
+  const id = String(personId || '').trim();
+  if (!id || id.startsWith('pending:')) {
+    clearPhotos();
     return;
   }
-  const person = peopleByName.get(name);
-  if (!person) return;
-  if (currentPerson?.id === person.id && photosHost.childElementCount) return;
+  const person = peopleById.get(id);
+  if (!person) {
+    clearPhotos();
+    return;
+  }
+  if (currentPersonId === id && photosHost?.childElementCount) return;
+  currentPersonId = id;
   currentPerson = person;
   await renderPhotos(person);
+}
+
+function personIdFromNode(node) {
+  if (!node) return null;
+  return node.dataset?.personId || node.dataset?.snapshotPerson || null;
+}
+
+function handleTreeSelection(event) {
+  const target = event.target instanceof Element ? event.target : null;
+  if (!target) return;
+  const frontier = target.closest('.research-frontier-node');
+  if (frontier) {
+    clearPhotos();
+    return;
+  }
+  const node = target.closest('[data-person-id], [data-snapshot-person]');
+  const id = personIdFromNode(node);
+  if (id) void selectPersonById(id);
 }
 
 async function initialise() {
@@ -233,16 +263,34 @@ async function initialise() {
   if (!session) return;
 
   const [{ data: peopleData }, { data: me }] = await Promise.all([
-    supabase.from('people').select('id,slug,given_names,surname'),
+    supabase.from('people').select('id,slug,given_names,surname,is_active'),
     supabase.from('app_users').select('role,status').eq('user_id', session.user.id).maybeSingle(),
   ]);
-  people = peopleData || [];
-  peopleByName = new Map(people.map((person) => [canonicalName(person), person]));
+  peopleById = new Map((peopleData || []).filter((person) => person.is_active !== false).map((person) => [person.id, person]));
   canEdit = me?.status === 'approved' && ['editor', 'admin'].includes(me?.role);
-  await selectCurrentPerson();
+
+  if (centreSelect?.value) await selectPersonById(centreSelect.value);
+  else clearPhotos();
+
+  treeCanvas?.addEventListener('click', handleTreeSelection, true);
+  treeCanvas?.addEventListener('keydown', (event) => {
+    if (!['Enter', ' '].includes(event.key)) return;
+    handleTreeSelection(event);
+  }, true);
+  centreSelect?.addEventListener('change', () => { void selectPersonById(centreSelect.value); });
 
   if (personName) {
-    new MutationObserver(() => { void selectCurrentPerson(); }).observe(personName, { childList: true, characterData: true, subtree: true });
+    new MutationObserver(() => {
+      if (!currentPersonId || !currentPerson) return;
+      const heading = personName.textContent.trim();
+      if (!heading || heading === 'Choose a person') {
+        clearPhotos();
+        return;
+      }
+      // The heading may be changed by research-frontier notes. Never resolve a person by name.
+      // If the visible heading no longer describes the ID-selected person, remove the gallery rather than guessing.
+      if (heading !== canonicalName(currentPerson)) clearPhotos();
+    }).observe(personName, { childList: true, characterData: true, subtree: true });
   }
 }
 
