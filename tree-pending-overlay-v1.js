@@ -207,4 +207,4 @@ document.addEventListener('genealogy:tree-suggestions-updated', clearPendingCach
 
 // One interaction stack only. Research-frontier loads the UI polish,
 // explorer controls, interaction guard and frontier-alternate layer.
-import('./research-frontier-v1.js?v=4').catch(() => {});
+import('./research-frontier-v1.js?v=5').catch(() => {});
