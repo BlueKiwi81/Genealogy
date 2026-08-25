@@ -50,3 +50,5 @@ function installToggle() {
 window.__genealogyResearchFrontierEnabled = () => localStorage.getItem(FRONTIER_STORAGE_KEY) === '1';
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installToggle);
 else installToggle();
+
+import('./tree-ui-polish-v1.js?v=1').catch(() => {});
