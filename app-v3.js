@@ -535,6 +535,10 @@ function sectorPath(innerRadius, outerRadius, startAngle, endAngle) {
   return `M ${p1[0]} ${p1[1]} A ${outerRadius} ${outerRadius} 0 ${large} 1 ${p2[0]} ${p2[1]} L ${p3[0]} ${p3[1]} A ${innerRadius} ${innerRadius} 0 ${large} 0 ${p4[0]} ${p4[1]} Z`;
 }
 
+function readableRotation(angle) {
+  return angle > 90 && angle < 270 ? angle + 180 : angle;
+}
+
 function evidenceStyle(path, status) {
   if (status === 'hypothesis') {
     path.setAttribute('fill-opacity', '.42');
@@ -660,6 +664,16 @@ function renderWedge(ns, entry, frontierItems, slot, level, innerRadius, outerRa
   } else if (!candidate && count <= 128) {
     addCurvedText(group, ns, '?', textRadius, startAngle, endAngle, 'fan-label enhanced-fan-label', size, `fan-unknown-${level}-${slot}`);
   }
+
+  // Research-frontier alternates place their clickable question-mark badge in
+  // this stable host. It must not depend on whether labels are straight or
+  // curved, otherwise changing typography can displace the interaction.
+  const mid = (startAngle + endAngle) / 2;
+  const [markerX, markerY] = polar(textRadius, mid);
+  const markerHost = document.createElementNS(ns, 'g');
+  markerHost.setAttribute('class', 'fan-marker-host');
+  markerHost.setAttribute('transform', `translate(${markerX} ${markerY}) rotate(${readableRotation(mid)})`);
+  group.appendChild(markerHost);
 
   if (item) {
     const activate = () => renderDetails(item);
