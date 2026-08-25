@@ -1,8 +1,5 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/+esm';
+import { supabase } from './supabase-client-v1.js';
 
-const URL = 'https://jkakvpsiiffnidggcqzc.supabase.co';
-const KEY = 'sb_publishable_h_0XIxzs33psSZTyKPGr8w_aJoVLw92';
-const supabase = createClient(URL, KEY);
 const select = document.getElementById('centreSelect');
 const state = { people: [], relationships: [], byId: new Map(), viewerId: null, distances: new Map(), loaded: false };
 
