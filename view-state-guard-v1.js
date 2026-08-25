@@ -1,5 +1,5 @@
 const treeCanvas = document.getElementById('treeCanvas');
-const STORAGE_KEY = 'genealogyFanViewStateV1';
+const STORAGE_KEY = 'genealogyFanViewStateV2';
 let controlsBound = false;
 let repairTimer = null;
 
@@ -10,20 +10,21 @@ function controls() {
   };
 }
 
-function readSavedState() {
+function readSavedDepth() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    const saved = raw ? JSON.parse(raw) : null;
+    return saved?.depth ? String(saved.depth) : null;
   } catch {
     return null;
   }
 }
 
-function saveState() {
-  const { mode, depth } = controls();
-  if (!mode || !depth) return;
+function saveDepth() {
+  const { depth } = controls();
+  if (!depth) return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: mode.value, depth: depth.value }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ depth: depth.value }));
   } catch {
     // View persistence is a convenience only.
   }
@@ -38,9 +39,6 @@ function enhancedSvgIsCurrent() {
 function rerenderFromControls() {
   const { mode, depth } = controls();
   if (!mode || !depth || enhancedSvgIsCurrent()) return;
-
-  // The enhanced renderer owns these controls. Re-firing their current values
-  // restores its internal state without changing the user's selection.
   mode.dispatchEvent(new Event('change', { bubbles: true }));
   depth.dispatchEvent(new Event('change', { bubbles: true }));
 }
@@ -56,27 +54,29 @@ function bindControls() {
   if (!mode || !depth) return false;
 
   controlsBound = true;
-  const saved = readSavedState();
-  let changed = false;
 
-  if (saved?.mode && [...mode.options].some((option) => option.value === saved.mode)) {
-    mode.value = saved.mode;
-    changed = true;
-  }
-  if (saved?.depth && [...depth.options].some((option) => option.value === String(saved.depth))) {
-    depth.value = String(saved.depth);
-    changed = true;
+  // Family/couple view is the deliberate default on every fresh page load.
+  // Do not restore an old ancestry-mode choice from localStorage: that made a
+  // signed-in family member unexpectedly appear without their spouse/partner.
+  if ([...mode.options].some(option => option.value === 'family')) {
+    mode.value = 'family';
   }
 
-  mode.addEventListener('change', saveState);
-  depth.addEventListener('change', saveState);
+  const savedDepth = readSavedDepth();
+  if (savedDepth && [...depth.options].some(option => option.value === savedDepth)) {
+    depth.value = savedDepth;
+  } else if ([...depth.options].some(option => option.value === '6')) {
+    depth.value = '6';
+  }
 
-  if (changed) {
+  depth.addEventListener('change', saveDepth);
+
+  // Apply the defaults to whichever renderer currently owns the controls.
+  queueMicrotask(() => {
     mode.dispatchEvent(new Event('change', { bubbles: true }));
     depth.dispatchEvent(new Event('change', { bubbles: true }));
-  } else {
-    saveState();
-  }
+    saveDepth();
+  });
   return true;
 }
 
