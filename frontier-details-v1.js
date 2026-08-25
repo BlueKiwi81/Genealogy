@@ -30,11 +30,19 @@ function showCandidate(candidate) {
   const heading = document.getElementById('personName');
   const details = document.getElementById('personDetails');
   if (!heading || !details) return;
+
+  // A frontier candidate is not a canonical person record. Clear any media or
+  // extra profile state left by the previously selected real person before
+  // rendering the research note. This prevents, for example, Werner's wedding
+  // photograph from remaining visible when a grey Kotze/Vercuil/Lubbe lead is selected.
+  document.getElementById('personPhotos')?.replaceChildren();
+  document.querySelector('.expanded-profile-details')?.remove();
+
   const anchor = personName(candidate.anchor_person_id);
   const alternates = sameSlot(candidate);
   heading.textContent = candidate.label || 'Research candidate';
   const rows = [
-    ['Status', 'Research frontier — lower confidence than a normal hypothesis'],
+    ['Status', 'Research frontier - lower confidence than a normal hypothesis'],
     ['Displayed position', `Possible ${slotLabel(candidate.parent_slot)} slot of ${anchor}`],
   ];
   if (candidate.year_text) rows.push(['Date / period', candidate.year_text]);
@@ -43,6 +51,10 @@ function showCandidate(candidate) {
   rows.push(['Interpretation', 'This grey position is a research visualisation only. It does not create or assert a canonical parent-child relationship.']);
   if (alternates.length) rows.push(['Other live candidates in this slot', alternates.map(item => item.label).filter(Boolean).join(', ')]);
   details.innerHTML = rows.map(([label, value]) => `<div class="detail-line"><strong>${esc(label)}</strong>${esc(value)}</div>`).join('');
+
+  document.dispatchEvent(new CustomEvent('genealogy:frontier-selected', {
+    detail: { candidateId: candidate.id, anchorPersonId: candidate.anchor_person_id },
+  }));
 }
 
 function candidateForNode(node) {
