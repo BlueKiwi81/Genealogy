@@ -1,4 +1,5 @@
 import { supabase } from './supabase-client-v1.js';
+import { isDivorcedRelationship } from './relationship-rules-v1.js';
 
 const select = document.getElementById('centreSelect');
 const state = { people: [], relationships: [], byId: new Map(), viewerId: null, distances: new Map(), loaded: false };
@@ -35,7 +36,8 @@ function siblingIds(id) {
 }
 function partnerIds(id) {
   return state.relationships
-    .filter(r => active(r) && ['spouse', 'partner', 'former_spouse'].includes(r.relationship_type) && (r.person1_id === id || r.person2_id === id))
+    .filter(r => active(r) && ['spouse', 'partner'].includes(r.relationship_type) && !isDivorcedRelationship(r)
+      && (r.person1_id === id || r.person2_id === id))
     .sort((a, b) => {
       const rank = r => (r.relationship_status === 'current' && r.relationship_type !== 'former_spouse' ? 3 : r.relationship_status === 'ended_by_death' ? 2 : 1);
       return rank(b) - rank(a);
@@ -132,7 +134,7 @@ function buildDistances() {
   const adjacency = new Map();
   const add = (a, b) => { const s = adjacency.get(a) || new Set(); s.add(b); adjacency.set(a, s); };
   state.relationships.forEach(r => {
-    if (!active(r) || !['parent', 'sibling', 'spouse', 'partner', 'former_spouse'].includes(r.relationship_type)) return;
+    if (!active(r) || !['parent', 'sibling', 'spouse', 'partner'].includes(r.relationship_type) || isDivorcedRelationship(r)) return;
     add(r.person1_id, r.person2_id); add(r.person2_id, r.person1_id);
   });
   const queue = [origin];
