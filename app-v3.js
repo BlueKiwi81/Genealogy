@@ -375,28 +375,45 @@ async function loadFamilyData(force = false) {
 }
 
 function ensureControls() {
-  if (!ui.panelHead || $('treeViewMode')) return;
-  const controls = document.createElement('div');
-  controls.className = 'enhanced-tree-controls';
-  controls.innerHTML = `
-    <label class="select-label enhanced-select-label">View
-      <select id="treeViewMode">
-        <option value="family">Family view</option>
-        <option value="ancestry">Person ancestry</option>
-      </select>
-    </label>
-    <label class="select-label enhanced-select-label">Generations
-      <select id="generationDepth"><option value="auto">Auto</option></select>
-    </label>`;
-  ui.panelHead.appendChild(controls);
-  $('treeViewMode').addEventListener('change', (event) => {
-    state.mode = event.target.value;
-    scheduleRender();
-  });
-  $('generationDepth').addEventListener('change', (event) => {
-    state.depthMode = event.target.value;
-    scheduleRender();
-  });
+  if (!ui.panelHead) return;
+  if (!$('treeViewMode')) {
+    const controls = document.createElement('div');
+    controls.className = 'enhanced-tree-controls';
+    controls.innerHTML = `
+      <label class="select-label enhanced-select-label">View
+        <select id="treeViewMode">
+          <option value="family">Family view</option>
+          <option value="ancestry">Person ancestry</option>
+        </select>
+      </label>
+      <label class="select-label enhanced-select-label">Generations
+        <select id="generationDepth"><option value="auto">Auto</option></select>
+      </label>`;
+    ui.panelHead.appendChild(controls);
+    $('treeViewMode').addEventListener('change', (event) => {
+      state.mode = event.target.value;
+      scheduleRender();
+    });
+    $('generationDepth').addEventListener('change', (event) => {
+      state.depthMode = event.target.value;
+      scheduleRender();
+    });
+  }
+  if (!$('toggleTreeControls')) {
+    const button = document.createElement('button');
+    button.id = 'toggleTreeControls';
+    button.type = 'button';
+    button.className = 'button ghost tree-controls-toggle';
+    button.textContent = 'Hide controls';
+    button.setAttribute('aria-expanded', 'true');
+    button.addEventListener('click', () => {
+      const panel = ui.panelHead.closest('.tree-panel');
+      const collapsed = panel?.classList.toggle('controls-collapsed') || false;
+      button.textContent = collapsed ? 'Show controls' : 'Hide controls';
+      button.setAttribute('aria-expanded', String(!collapsed));
+    });
+    ui.panelHead.appendChild(button);
+  }
 }
 
 function populateCentreSelect() {
@@ -520,10 +537,6 @@ function sectorPath(innerRadius, outerRadius, startAngle, endAngle) {
   return `M ${p1[0]} ${p1[1]} A ${outerRadius} ${outerRadius} 0 ${large} 1 ${p2[0]} ${p2[1]} L ${p3[0]} ${p3[1]} A ${innerRadius} ${innerRadius} 0 ${large} 0 ${p4[0]} ${p4[1]} Z`;
 }
 
-function readableRotation(angle) {
-  return angle > 90 && angle < 270 ? angle + 180 : angle;
-}
-
 function evidenceStyle(path, status) {
   if (status === 'hypothesis') {
     path.setAttribute('fill-opacity', '.42');
@@ -544,14 +557,36 @@ function branchIndex(slot, level, familyMode) {
   return Math.min(rootBranches - 1, Math.floor(slot / (slotsAtLevel / rootBranches)));
 }
 
-function addText(group, ns, value, y, className, fontSize) {
-  const node = document.createElementNS(ns, 'text');
-  node.setAttribute('x', '0');
-  node.setAttribute('y', String(y));
-  node.setAttribute('class', className);
-  if (fontSize) node.setAttribute('font-size', String(fontSize));
-  node.textContent = value;
-  group.appendChild(node);
+function addCurvedText(group, ns, value, radius, startAngle, endAngle, className, fontSize, id) {
+  if (!value) return;
+  const span = endAngle - startAngle;
+  const padding = Math.min(3, span * .08);
+  const arcStart = startAngle + padding;
+  const arcEnd = endAngle - padding;
+  const mid = (arcStart + arcEnd) / 2;
+  const reverse = mid > 90 && mid < 270;
+  const from = reverse ? arcEnd : arcStart;
+  const to = reverse ? arcStart : arcEnd;
+  const [x1, y1] = polar(radius, from);
+  const [x2, y2] = polar(radius, to);
+  const guide = document.createElementNS(ns, 'path');
+  guide.setAttribute('id', id);
+  guide.setAttribute('d', `M ${x1} ${y1} A ${radius} ${radius} 0 ${span > 180 ? 1 : 0} ${reverse ? 0 : 1} ${x2} ${y2}`);
+  guide.setAttribute('class', 'fan-text-guide');
+  guide.setAttribute('aria-hidden', 'true');
+  group.appendChild(guide);
+
+  const text = document.createElementNS(ns, 'text');
+  text.setAttribute('class', className);
+  text.setAttribute('text-anchor', 'middle');
+  if (fontSize) text.setAttribute('font-size', String(fontSize));
+  const textPath = document.createElementNS(ns, 'textPath');
+  textPath.setAttribute('href', `#${id}`);
+  textPath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${id}`);
+  textPath.setAttribute('startOffset', '50%');
+  textPath.textContent = value;
+  text.appendChild(textPath);
+  group.appendChild(text);
 }
 
 function renderDetails(item) {
@@ -615,22 +650,18 @@ function renderWedge(ns, entry, frontierItems, slot, level, innerRadius, outerRa
   }
   group.appendChild(path);
 
-  const mid = (startAngle + endAngle) / 2;
-  const [x, y] = polar((innerRadius + outerRadius) / 2, mid);
-  const textGroup = document.createElementNS(ns, 'g');
-  textGroup.setAttribute('transform', `translate(${x} ${y}) rotate(${readableRotation(mid)})`);
+  const textRadius = (innerRadius + outerRadius) / 2;
   const count = (familyMode ? 4 : 2) * (2 ** level);
   const size = count >= 128 ? 6.2 : count >= 64 ? 7.2 : count >= 32 ? 8 : count >= 16 ? 9 : 10.5;
   if (item) {
-    addText(textGroup, ns, firstName(item), -2, 'fan-label enhanced-fan-label', size);
-    if (years(item)) addText(textGroup, ns, years(item), 11, 'fan-date enhanced-fan-date', Math.max(4.8, size - 2));
+    addCurvedText(group, ns, firstName(item), textRadius - 5, startAngle, endAngle, 'fan-label enhanced-fan-label', size, `fan-name-${level}-${slot}`);
+    if (years(item)) addCurvedText(group, ns, years(item), textRadius + 10, startAngle, endAngle, 'fan-date enhanced-fan-date', Math.max(4.8, size - 2), `fan-date-${level}-${slot}`);
   } else if (candidate && count <= 128) {
-    addText(textGroup, ns, candidate.label || 'Research lead', -3, 'fan-label enhanced-fan-label frontier-fan-label', Math.max(5.6, size));
-    addText(textGroup, ns, [candidate.year_text, frontierItems.length > 1 ? `+${frontierItems.length - 1} alternate` : 'FRONTIER'].filter(Boolean).join(' | '), 10, 'fan-date enhanced-fan-date frontier-fan-date', Math.max(4.8, size - 1.5));
+    addCurvedText(group, ns, candidate.label || 'Research lead', textRadius - 5, startAngle, endAngle, 'fan-label enhanced-fan-label frontier-fan-label', Math.max(5.6, size), `fan-frontier-name-${level}-${slot}`);
+    addCurvedText(group, ns, [candidate.year_text, frontierItems.length > 1 ? `+${frontierItems.length - 1} alternate` : 'FRONTIER'].filter(Boolean).join(' | '), textRadius + 10, startAngle, endAngle, 'fan-date enhanced-fan-date frontier-fan-date', Math.max(4.8, size - 1.5), `fan-frontier-date-${level}-${slot}`);
   } else if (!candidate && count <= 128) {
-    addText(textGroup, ns, '?', -2, 'fan-label enhanced-fan-label', size);
+    addCurvedText(group, ns, '?', textRadius, startAngle, endAngle, 'fan-label enhanced-fan-label', size, `fan-unknown-${level}-${slot}`);
   }
-  group.appendChild(textGroup);
 
   if (item) {
     const activate = () => renderDetails(item);
