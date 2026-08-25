@@ -182,6 +182,7 @@ function renderCentreSiblingDeck() {
   if (!centre) return;
 
   const mode = document.getElementById('treeViewMode')?.value || 'family';
+  if (mode === 'map') return;
   const partner = mode === 'family' ? familyPartnerOf(centre.id) : null;
   const members = partner ? [centre, partner] : [centre];
   const bubbles = members.map(siblingBubble).filter(Boolean);
