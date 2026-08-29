@@ -1,5 +1,5 @@
-const APP_VERSION = '1.2.0';
-const UPDATED_AT = '29 August 2026 at 4:01 pm NZST';
+const APP_VERSION = '1.2.1';
+const UPDATED_AT = '30 August 2026 at 8:02 am NZST';
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -47,7 +47,7 @@ function showAbout() {
       <div class="about-section"><h3>Research and evidence</h3><p>This archive keeps documentary evidence, family recollection, inference and unresolved research separate. A record is displayed with its source and evidence status, but it is treated as proof only after the identity and the particular claim have been reviewed. Map pins represent reviewed event locations; a movement line appears only when the movement itself has been separately evidenced.</p></div>
       <div class="about-section"><h3>Conservative use of AI</h3><p>The research assistant uses AI to look for records and archival leads for deceased people. It is disabled when a person is living or the record does not establish that they are deceased, and identifying details for living or potentially living relatives are withheld from the AI research request. Results remain research leads until a person checks the original source. The assistant cannot change the canonical family tree by itself.</p></div>
       <div class="about-section"><h3>Privacy</h3><p>The database and uploaded evidence are limited to approved family access. We minimise information about living people and do not use the research assistant to investigate them. Some source documents remain more restricted than the ordinary family profile.</p></div>
-      <div class="about-section"><h3>Acknowledgement</h3><p>FamilySearch has been instrumental in locating and viewing many of the civil, church, marriage, death and probate records that support this archive. Individual records retain their own repository, citation and link wherever that information is available. FamilySearch is an independent service and does not sponsor or operate this family archive.</p></div>
+      <div class="about-section"><h3>Acknowledgement</h3><p>FamilySearch has been instrumental in locating and viewing many of the civil, church, marriage, death and probate records that support this archive. GenDatabase.com has also been exceptionally valuable, particularly Yvonne, whose continued interest, careful record checking and generous research support have helped resolve several difficult family links. We are deeply grateful for that assistance and highly recommend Yvonne and GenDatabase.com to other South African family-history researchers. Individual records retain their own repository, citation and link wherever that information is available. FamilySearch and GenDatabase are independent services and do not sponsor or operate this family archive.</p></div>
       <div class="about-actions"><button id="aboutPrivacy" class="button secondary" type="button">Read the privacy policy</button><button id="aboutDone" class="button primary" type="button">Done</button></div>
     </section>`;
   document.body.appendChild(overlay);
