@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.repository == 'BlueKiwi81/Genealogy'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
