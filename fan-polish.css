@@ -1,0 +1,12 @@
+.lineage-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:10px 0 2px;padding:10px 12px;border:1px solid #e1d7cb;border-radius:12px;background:#faf6ef;color:#5c5249;font:600 .78rem/1.35 Arial,sans-serif}.lineage-key-item{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}.lineage-swatch{width:14px;height:14px;border-radius:4px;background:var(--lineage-colour);border:1px solid rgba(83,72,62,.28);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+
+/* The fan canvas is empty while the initial family data is loading. Show a clear
+   loading state there so the app never looks stalled or broken. renderTree()
+   replaces the empty canvas with the SVG, which removes this state automatically. */
+.tree-canvas:empty{display:grid;place-items:center;align-content:center;gap:14px;color:var(--muted)}
+.tree-canvas:empty::before{content:"";width:42px;height:42px;border:4px solid #e1d7cb;border-top-color:var(--accent);border-radius:50%;animation:family-fan-loading-spin .8s linear infinite}
+.tree-canvas:empty::after{content:"Loading family fan...";font:700 .84rem/1.4 Arial,sans-serif;letter-spacing:.02em;color:var(--muted)}
+@keyframes family-fan-loading-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.tree-canvas:empty::before{animation:none}}
+@media print{.tree-canvas:empty::before,.tree-canvas:empty::after{display:none}}
+@media(max-width:620px){.lineage-legend{gap:8px 12px}.lineage-key-item{white-space:normal;flex:1 1 44%}}

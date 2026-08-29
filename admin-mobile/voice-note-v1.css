@@ -1,0 +1,26 @@
+.evidence-audio {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.evidence-file-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.evidence-file-actions .button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+  text-align: center;
+}
+
+@media (max-width: 420px) {
+  .evidence-file-actions {
+    grid-template-columns: 1fr;
+  }
+}

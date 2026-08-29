@@ -1,0 +1,81 @@
+.birthday-calendar-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.birthday-calendar-panel h2 {
+  margin-bottom: 0;
+}
+
+.birthday-calendar-intro {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.birthday-calendar-status {
+  padding: 11px 12px;
+  border: 1px solid rgba(94, 73, 53, .18);
+  border-radius: 12px;
+  background: rgba(244, 239, 231, .62);
+  color: #5f554c;
+  font-size: .92rem;
+  line-height: 1.45;
+}
+
+.birthday-calendar-field {
+  display: grid;
+  gap: 7px;
+}
+
+.birthday-calendar-field select,
+.birthday-person-preference select {
+  width: 100%;
+}
+
+.birthday-calendar-help {
+  margin: -5px 0 0;
+  color: #766b61;
+  font-size: .82rem;
+  line-height: 1.45;
+}
+
+.birthday-calendar-check {
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.birthday-calendar-check input {
+  margin-top: 3px;
+}
+
+.birthday-calendar-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.birthday-calendar-actions .button {
+  box-sizing: border-box;
+  width: 100%;
+  text-align: center;
+  text-decoration: none;
+}
+
+.birthday-person-preference {
+  display: grid;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(94, 73, 53, .18);
+}
+
+.birthday-person-preference > span {
+  color: #5f4935;
+  font-family: Georgia, serif;
+  font-size: 1.02rem;
+}
+
+@media (min-width: 720px) {
+  .birthday-calendar-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

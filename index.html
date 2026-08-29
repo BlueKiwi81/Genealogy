@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="description" content="Private family history and genealogy network" />
+  <title>Our Family History</title>
+  <link rel="stylesheet" href="./styles.css?v=10" />
+  <link rel="stylesheet" href="./editor.css?v=8" />
+  <link rel="stylesheet" href="./registration.css?v=7" />
+  <link rel="stylesheet" href="./view-enhancements.css?v=6" />
+  <link rel="stylesheet" href="./fan-polish.css?v=3" />
+  <link rel="stylesheet" href="./centre-family-polish.css?v=6" />
+  <link rel="stylesheet" href="./birthday-calendar-v1.css?v=2" />
+  <link rel="stylesheet" href="./workspace-layout-v2.css?v=4" />
+  <link rel="stylesheet" href="./research-help-v1.css?v=1" />
+  <link rel="stylesheet" href="./person-photos.css?v=1" />
+  <link rel="stylesheet" href="./person-evidence-v1.css?v=1" />
+  <link rel="stylesheet" href="./photo-import.css?v=2" />
+  <link id="genealogyLeafletStyles" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+  <link id="genealogyMapViewStyles" rel="stylesheet" href="./map-view-v1.css?v=5" />
+  <link rel="stylesheet" href="./mobile-readability-v1.css?v=2" />
+</head>
+<body class="family-app-page">
+  <div class="app-shell">
+    <header class="topbar">
+      <div><p class="eyebrow">Shared family history</p><h1>Our Family Tree</h1></div>
+      <div class="top-actions"><button id="centreMe" class="button secondary hidden" type="button">Make me the centre</button><button id="signOut" class="button ghost hidden" type="button">Sign out</button></div>
+    </header>
+
+    <main>
+      <section id="authCard" class="panel auth-panel">
+        <div><p class="eyebrow">Family access</p><h2>Welcome to the family archive</h2><p class="lede">New relatives register once and verify their email with a code. Returning family members sign in with a code sent to their email address. Nobody needs to create or remember a password.</p></div>
+        <div class="auth-choice-grid">
+          <form id="loginForm" class="stack auth-choice">
+            <h3>Already registered?</h3><p>Use the email address you registered with.</p>
+            <label for="loginEmail">Email address</label><input id="loginEmail" type="email" autocomplete="email" required placeholder="you@example.com" />
+            <button class="button secondary" type="submit">Send sign-in code</button>
+          </form>
+          <form id="registerForm" class="stack auth-choice">
+            <h3>Register for family access</h3><p>Your details help the family editor identify the correct person before access is approved.</p>
+            <div class="inline-fields"><div><label for="registerFirstName">First name</label><input id="registerFirstName" type="text" autocomplete="given-name" required /></div><div><label for="registerMiddleNames">Middle name(s)</label><input id="registerMiddleNames" type="text" autocomplete="additional-name" /></div></div>
+            <label for="registerLastName">Last name</label><input id="registerLastName" type="text" autocomplete="family-name" required />
+            <label for="registerBirthDate">Date of birth</label><input id="registerBirthDate" type="date" autocomplete="bday" required />
+            <label for="registerEmail">Email address</label><input id="registerEmail" type="email" required />
+            <label class="check-row"><input id="registerUpdates" type="checkbox" /> <span>Email me when there are family-tree updates relevant to me. This is optional.</span></label>
+            <p class="privacy-note">Your date of birth helps us match you to the right family record, but it does not automatically grant access. The family editor still approves every registration.</p>
+            <button class="button primary" type="submit">Register and send code</button>
+          </form>
+        </div>
+
+        <div id="otpPanel" class="auth-choice hidden">
+          <p class="eyebrow">Email verification</p>
+          <h3>Enter your verification code</h3>
+          <p>We sent a code to <strong id="otpEmailLabel"></strong>. Use the code from the newest email you received.</p>
+          <form id="otpForm" class="stack">
+            <label for="otpCode">Verification code</label>
+            <input id="otpCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" pattern="[0-9]{6,10}" required placeholder="12345678" />
+            <button class="button primary" type="submit">Verify code</button>
+          </form>
+          <button id="otpBack" class="button ghost" type="button">Use a different email</button>
+          <p id="otpMessage" class="message" aria-live="polite"></p>
+        </div>
+
+        <p id="authMessage" class="message" aria-live="polite"></p>
+      </section>
+
+      <section id="registrationCard" class="panel auth-panel hidden">
+        <div id="registrationFormWrap">
+          <p class="eyebrow">Complete registration</p><h2>Tell us who you are</h2><p class="lede">Your email is verified. These details allow the family editor to link your login to the correct person in the family tree.</p>
+          <form id="completeRegistrationForm" class="stack">
+            <div class="inline-fields"><div><label for="completeFirstName">First name</label><input id="completeFirstName" type="text" autocomplete="given-name" required /></div><div><label for="completeMiddleNames">Middle name(s)</label><input id="completeMiddleNames" type="text" autocomplete="additional-name" /></div></div>
+            <label for="completeLastName">Last name</label><input id="completeLastName" type="text" autocomplete="family-name" required />
+            <label for="completeBirthDate">Date of birth</label><input id="completeBirthDate" type="date" autocomplete="bday" required />
+            <label for="completeEmail">Verified email</label><input id="completeEmail" class="verified-email" type="email" readonly />
+            <label class="check-row"><input id="completeUpdates" type="checkbox" /> <span>Email me when there are family-tree updates relevant to me. This is optional.</span></label>
+            <button class="button primary" type="submit">Submit access request</button>
+          </form>
+        </div>
+        <div id="registrationPending" class="pending-card hidden"><p class="eyebrow">Awaiting approval</p><h2 id="pendingName">Family member</h2><p id="pendingSummary" class="lede"></p></div>
+        <p id="registrationMessage" class="message" aria-live="polite"></p>
+      </section>
+
+      <section id="appArea" class="hidden">
+        <section class="intro-grid"><div class="panel"><p class="eyebrow">Current view</p><h2 id="viewTitle">Family network</h2><p id="viewSummary" class="lede">Choose a person to place them at the centre of the tree.</p></div><div class="panel compact"><p class="eyebrow">Contribution model</p><p class="small">Family members can build their working tree directly. Proposed edits stay reversible until reviewed; approved information becomes part of the shared canonical tree.</p></div></section>
+        <section class="workspace">
+          <div class="panel tree-panel"><div class="panel-head"><div><p class="eyebrow">Interactive tree</p><h2>Family fan</h2></div><label class="select-label">Centre person<select id="centreSelect"></select></label></div><div id="treeStatus" class="message"></div><div id="treeCanvas" class="tree-canvas" aria-live="polite"></div></div>
+          <aside class="side-column">
+            <section class="panel" id="personPanel"><p class="eyebrow">Selected person</p><h2 id="personName">Choose a person</h2><div id="personDetails" class="detail-stack"></div></section>
+            <section class="panel"><p class="eyebrow">Help build the archive</p><h2>Suggest information</h2><form id="contributionForm" class="stack"><label for="contributionType">What are you adding?</label><select id="contributionType" required><option value="story">Story or recollection</option><option value="nickname">Nickname / known as</option><option value="correction">Correction</option><option value="date">Date</option><option value="place">Place</option><option value="relationship">Relationship</option><option value="new_person">New person</option><option value="source">Source or record</option><option value="other">Other</option></select><label for="language">Language</label><input id="language" value="en" maxlength="12" /><label for="contributionText">Information</label><textarea id="contributionText" rows="6" required placeholder="Write in whichever language is most natural to you."></textarea><button class="button primary" type="submit">Submit for review</button></form><p id="contributionMessage" class="message" aria-live="polite"></p></section>
+          </aside>
+        </section>
+        <section id="editorArea" class="editor-area hidden"><div class="editor-heading"><div><p class="eyebrow">Family editor</p><h2>Review and approval desk</h2><p class="lede">Approve family access, live tree changes and submitted stories while preserving the original evidence.</p></div><button id="refreshEditor" class="button secondary" type="button">Refresh queues</button></div><p id="editorMessage" class="message" aria-live="polite"></p><div class="editor-grid"><section class="panel"><p class="eyebrow">New relatives</p><h2>Access requests</h2><div id="accessQueue" class="queue-list"></div></section><section class="panel"><p class="eyebrow">Family submissions</p><h2>Contribution queue</h2><div id="contributionQueue" class="queue-list"></div></section></div></section>
+      </section>
+    </main>
+    <p class="project-credit-note">Bespoke genealogy project for our extended family.</p>
+  </div>
+  <script type="module" src="./otp-auth-v2.js?v=20260827-2"></script>
+  <script type="module" src="./tree-pending-overlay-v1.js?v=6"></script>
+  <script type="module" src="./profile-intake-v1.js?v=2"></script>
+  <script type="module" src="./birthday-calendar-v1.js?v=2"></script>
+  <script type="module" src="./app-v3.js?v=16"></script>
+  <script type="module" src="./centre-navigation-v1.js?v=4"></script>
+  <script type="module" src="./generation-default-v1.js?v=5"></script>
+  <script type="module" src="./share-v1.js?v=1"></script>
+  <script type="module" src="./workspace-layout-v2.js?v=4"></script>
+  <script type="module" src="./frontier-details-v1.js?v=3"></script>
+  <script type="module" src="./relationship-evidence-v1.js?v=1"></script>
+  <script type="module" src="./child-partner-groups-v1.js?v=1"></script>
+  <script type="module" src="./lineage-evidence-boundary-v1.js?v=1"></script>
+  <script type="module" src="./svg-label-sizing-v1.js?v=2"></script>
+  <script type="module" src="./fan-polish-v1.js?v=4"></script>
+  <script type="module" src="./centre-family-polish-v1.js?v=5"></script>
+  <script type="module" src="./centre-card-fit-v1.js?v=4"></script>
+  <script type="module" src="./fan-family-side-alignment-v1.js?v=3"></script>
+  <script type="module" src="./person-photos-v1.js?v=1"></script>
+  <script type="module" src="./person-evidence-v1.js?v=1"></script>
+  <script type="module" src="./source-upload-v1.js?v=4"></script>
+  <script type="module" src="./evidence-analysis-auto-v1.js?v=2"></script>
+  <script type="module" src="./research-help-v1.js?v=2"></script>
+  <script type="module" src="./privacy-ai-hardening-v1.js?v=1"></script>
+  <script type="module" src="./research-frontier-contribution-v1.js?v=2"></script>
+  <script type="module" src="./contribution-workflow-v2.js?v=2"></script>
+  <script type="module" src="./fan-cell-actions-v1.js?v=3"></script>
+  <script type="module" src="./research-case-workflow-v1.js?v=3"></script>
+  <script type="module" src="./fan-cell-action-dedupe-v1.js?v=1"></script>
+  <script type="module" src="./sibling-band-v2.js?v=4"></script>
+  <script type="module" src="./sibling-family-centre-v1.js?v=2"></script>
+  <script type="module" src="./family-snapshot-v1.js?v=2"></script>
+  <script type="module" src="./profile-display-v1.js?v=3"></script>
+  <script type="module" src="./person-provenance-v1.js?v=1"></script>
+  <script type="module" src="./research-frontier-profile-v1.js?v=1"></script>
+  <script type="module" src="./tree-suggestions-v1.js?v=2"></script>
+  <script type="module" src="./tree-edit-form-fix-v1.js?v=3"></script>
+  <script type="module" src="./editor-evidence-v1.js?v=4"></script>
+  <script type="module" src="./editor-document-ai-v1.js?v=1"></script>
+  <script type="module" src="./view-state-guard-v1.js?v=4"></script>
+  <script type="module" src="./family-editor-workbench-v1.js?v=1"></script>
+  <script type="module" src="./editor-v2.js?v=7"></script>
+  <script type="module" src="./photo-import-v1.js?v=2"></script>
+  <script type="module" src="./photo-face-tagging-v1.js?v=1"></script>
+  <script type="module" src="./intelligent-contribution-review-v1.js?v=2"></script>
+  <script type="module" src="./research-review-resolution-v1.js?v=1"></script>
+  <script type="module" src="./research-frontier-editor-v1.js?v=1"></script>
+  <script type="module" src="./editor-tree-suggestions-v1.js?v=3"></script>
+  <script type="module" src="./editor-tree-intelligent-review-v1.js?v=2"></script>
+  <script type="module" src="./editor-tree-resolution-v1.js?v=1"></script>
+  <script type="module" src="./editor-tree-resolution-placement-v1.js?v=2"></script>
+  <script type="module" src="./nickname-editor-v1.js?v=4"></script>
+  <script type="module" src="./layout-integrity-v1.js?v=12"></script>
+  <script type="module" src="./about-v1.js?v=4"></script>
+  <script type="module" src="./release-notice-v1.js?v=3"></script>
+</body>
+</html>

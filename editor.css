@@ -1,0 +1,67 @@
+.editor-area { margin-top: 20px; }
+.editor-heading { display: flex; justify-content: space-between; align-items: end; gap: 18px; margin-bottom: 14px; }
+.editor-heading .lede { margin-bottom: 0; }
+.editor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.queue-list { display: grid; gap: 12px; }
+.queue-empty { padding: 20px 0; color: var(--muted); font: .95rem/1.5 Arial, sans-serif; }
+.queue-card { border: 1px solid var(--line); border-radius: 14px; background: #faf6ef; padding: 14px; }
+.queue-title { margin: 0 0 4px; font: 700 1rem/1.35 Arial, sans-serif; color: #302921; }
+.queue-meta { margin: 0 0 10px; color: var(--muted); font: .88rem/1.5 Arial, sans-serif; }
+.queue-copy { margin: 9px 0; font-size: 1rem; line-height: 1.55; white-space: pre-wrap; }
+.queue-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.queue-actions .button { min-height: 36px; padding: 8px 11px; }
+.queue-actions .danger { background: #f2dddd; color: #792f2f; }
+.queue-card select, .queue-card textarea { margin-top: 5px; }
+.queue-field { display: grid; gap: 4px; margin-top: 10px; }
+.queue-field span { font: 700 .78rem Arial, sans-serif; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+
+/* Family Editor readability floor.
+   Review text must be comfortably readable before an editor approves or rejects family data. */
+#editorArea small,
+#editorArea .small { font-size: .86rem !important; line-height: 1.5 !important; }
+#editorArea .eyebrow { font-size: .76rem !important; line-height: 1.35 !important; }
+#editorArea label { font-size: .86rem !important; line-height: 1.4 !important; }
+#editorArea select,
+#editorArea textarea,
+#editorArea input { font-size: .88rem !important; line-height: 1.4 !important; }
+#editorArea .button { font-size: .84rem !important; line-height: 1.25 !important; }
+
+/* Live tree review and intelligent-review text. */
+#editorArea .tree-change-top strong { font-size: .92rem !important; line-height: 1.4 !important; }
+#editorArea .tree-change-meta { font-size: .82rem !important; line-height: 1.5 !important; }
+#editorArea .tree-change-status { font-size: .72rem !important; }
+#editorArea .tree-change-details { font-size: .84rem !important; line-height: 1.5 !important; }
+#editorArea .tree-ai-review-label,
+#editorArea .tree-ai-review-decision { font-size: .72rem !important; line-height: 1.3 !important; }
+#editorArea .tree-ai-review h4 { font-size: .96rem !important; }
+#editorArea .tree-ai-review-summary { font-size: .88rem !important; line-height: 1.45 !important; }
+#editorArea .tree-ai-review-rationale { font-size: .84rem !important; line-height: 1.55 !important; }
+#editorArea .tree-ai-review-warnings { font-size: .82rem !important; line-height: 1.5 !important; }
+#editorArea .tree-ai-review-foot { font-size: .78rem !important; line-height: 1.5 !important; }
+
+/* Archive photo review. These were previously as small as 10-12px. */
+#editorArea .photo-import-panel-summary small { font-size: 13px !important; line-height: 1.45 !important; }
+#editorArea .photo-import-counts span,
+#editorArea .photo-import-status { font-size: 11.5px !important; line-height: 1.1 !important; }
+#editorArea .photo-import-meta-main strong { font-size: 1rem !important; line-height: 1.4 !important; }
+#editorArea .photo-source-code { font-size: 11.5px !important; line-height: 1.2 !important; }
+#editorArea .photo-import-collection { font-size: 13px !important; line-height: 1.45 !important; }
+#editorArea .photo-map-person { font-size: 13px !important; line-height: 1.35 !important; }
+#editorArea .photo-map-person small { font-size: 12px !important; line-height: 1.35 !important; }
+#editorArea .photo-map-remove { font-size: 11.5px !important; }
+#editorArea .photo-map-none,
+#editorArea .photo-import-note,
+#editorArea .photo-import-next-step { font-size: 13.5px !important; line-height: 1.55 !important; }
+#editorArea .photo-import-review-grid label,
+#editorArea .photo-mapping-grid label { font-size: 12.5px !important; line-height: 1.35 !important; }
+#editorArea .photo-import-review-grid select,
+#editorArea .photo-import-review-grid textarea,
+#editorArea .photo-mapping-grid select,
+#editorArea .photo-mapping-grid input { font-size: 13.5px !important; line-height: 1.4 !important; }
+#editorArea .photo-import-mapping-editor > strong { font-size: .92rem !important; line-height: 1.4 !important; }
+#editorArea .photo-import-upload small { font-size: 12.5px !important; line-height: 1.45 !important; }
+#editorArea .photo-import-file { font-size: 13px !important; }
+#editorArea .photo-import-completed > summary { font-size: 13.5px !important; line-height: 1.4 !important; }
+
+@media (max-width: 900px) { .editor-grid { grid-template-columns: 1fr; } }
+@media (max-width: 650px) { .editor-heading { align-items: stretch; flex-direction: column; } }

@@ -1,0 +1,152 @@
+name: Deploy family history site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Prepare minimal public site
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp index.html _site/
+
+          # Only publish browser assets actually referenced by index.html, plus
+          # their local JavaScript imports. Database migrations, rollback files,
+          # backend source, internal documentation and legacy app files must never
+          # enter the public Pages artifact merely because they exist in the repo.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import shutil
+
+          root = Path('.')
+          site = Path('_site')
+          html = (root / 'index.html').read_text(encoding='utf-8')
+
+          queue = []
+          for ref in re.findall(r'(?:src|href)=["\']([^"\']+)["\']', html):
+              if not ref.startswith('./'):
+                  continue
+              queue.append(ref[2:].split('?', 1)[0].split('#', 1)[0])
+
+          seen = set()
+          import_patterns = [
+              re.compile(r'(?:from\s+|import\s*\()\s*["\'](\./[^"\']+)["\']'),
+              re.compile(r'import\s*["\'](\./[^"\']+)["\']'),
+          ]
+
+          while queue:
+              rel = queue.pop()
+              rel = rel.split('?', 1)[0].split('#', 1)[0]
+              if rel in seen:
+                  continue
+              src = root / rel
+              if not src.is_file():
+                  raise SystemExit(f'Required public asset is missing: {rel}')
+              dst = site / rel
+              dst.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(src, dst)
+              seen.add(rel)
+
+              if src.suffix == '.js':
+                  text = src.read_text(encoding='utf-8')
+                  for pattern in import_patterns:
+                      for match in pattern.findall(text):
+                          child = match[2:].split('?', 1)[0].split('#', 1)[0]
+                          queue.append(str((Path(rel).parent / child).as_posix()))
+
+          print(f'Published {len(seen)} referenced browser assets.')
+          PY
+
+          # The mobile editor is a separate installed surface and is intentionally
+          # public only as browser code; its data remains behind Supabase auth/RLS.
+          cp -R admin-mobile _site/
+
+          # Controlled trial: the source renderer retains its conservative six-ring
+          # development cap, while the published family site may render up to ten
+          # ancestor rings when the user explicitly asks for all available generations.
+          # The normal default remains five rings.
+          sed -i 's/const RENDER_DEPTH_CAP = 6;/const RENDER_DEPTH_CAP = 10;/' _site/app-v3.js
+          grep -q 'const RENDER_DEPTH_CAP = 10;' _site/app-v3.js
+
+          # Cache-bust the independently loaded map module when the refined historical
+          # context layer changes, so returning browsers do not reuse the earlier map.
+          sed -i "s#import('./map-view-v1.js?v=2')#import('./map-view-v1.js?v=3')#" _site/app-v3.js
+          grep -q "import('./map-view-v1.js?v=3')" _site/app-v3.js
+
+          # Remove source-only identity/location hints from the public browser bundle.
+          # Approved users obtain family identities and feature anchors from Supabase
+          # after authentication; generic UI examples do not need real project places.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          app = Path('_site/app-v3.js')
+          text = app.read_text(encoding='utf-8')
+          pattern = re.compile(r"state\.people\.find\(\(item\) => item\.slug === '[^']+'\)\?\.id \|\| ")
+          text, changed = pattern.subn('', text, count=1)
+          if changed != 1:
+              raise SystemExit('Expected source-only centre fallback was not found exactly once.')
+          app.write_text(text, encoding='utf-8')
+
+          mobile = Path('_site/admin-mobile/index.html')
+          text = mobile.read_text(encoding='utf-8')
+          text, changed = re.subn(r'(id="photoPlace"[^>]*placeholder=")[^"]*(")', r'\1e.g. town or district\2', text, count=1)
+          if changed != 1:
+              raise SystemExit('Expected photo-place example was not found exactly once.')
+          mobile.write_text(text, encoding='utf-8')
+
+          research = Path('_site/research-help-static-i18n-v1.js')
+          text = research.read_text(encoding='utf-8')
+          text, en_changed = re.subn(r'targeted [A-Z][A-Za-z-]+ research', 'targeted local research', text, count=1)
+          text, af_changed = re.subn(r'geteikende [A-Z][A-Za-z-]+-navorsing', 'geteikende plaaslike navorsing', text, count=1)
+          if en_changed != 1 or af_changed != 1:
+              raise SystemExit('Expected local research examples were not found exactly once in each language.')
+          research.write_text(text, encoding='utf-8')
+          PY
+
+          # Privacy guard: fail deployment if source-only material somehow enters the
+          # static artifact. Browser code and styles are expected; SQL, Markdown and
+          # backend Supabase source are not.
+          if find _site -type f \( -name '*.sql' -o -name '*.md' \) -print -quit | grep -q .; then
+            echo 'Refusing to deploy source-only material to GitHub Pages.' >&2
+            exit 1
+          fi
+          if find _site -path '*/supabase/*' -print -quit | grep -q .; then
+            echo 'Refusing to deploy backend Supabase source to GitHub Pages.' >&2
+            exit 1
+          fi
+
+          touch _site/.nojekyll
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

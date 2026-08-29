@@ -1,0 +1,36 @@
+.contribution-mode-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 14px;padding:4px;border-radius:12px;background:#f1ece5}
+.contribution-mode-tab{border:0;border-radius:9px;padding:9px 8px;background:transparent;color:#5c5145;font:600 .78rem/1.25 Arial,sans-serif;cursor:pointer}
+.contribution-mode-tab.is-active{background:#fff;color:#2f4635;box-shadow:0 1px 4px rgba(54,45,36,.14)}
+.research-help-panel{display:grid;gap:18px}
+.research-help-panel.hidden{display:none}
+.research-intro,.research-baseline,.research-steps{padding:14px;border:1px solid rgba(96,82,67,.18);border-radius:12px;background:#fbf8f3}
+.research-intro h3,.research-baseline h3,.research-steps h3,.research-resource-group h3{margin:.1rem 0 .55rem}
+.research-intro p:last-child,.research-baseline p:last-child,.research-steps p:last-child{margin-bottom:0}
+.research-baseline p,.research-steps li{font-size:.86rem;line-height:1.48}
+.research-steps ol{margin:.55rem 0 .7rem;padding-left:1.25rem}
+.research-steps li+li{margin-top:.32rem}
+.research-resource-directory{display:grid;gap:22px}
+.research-resource-group{display:grid;gap:9px}
+.research-resource-grid{display:grid;grid-template-columns:1fr;gap:9px}
+.research-resource-card{padding:13px;border:1px solid rgba(96,82,67,.2);border-radius:12px;background:#fff}
+.research-resource-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.research-resource-head h4{margin:0;font-size:.96rem;line-height:1.3}
+.research-resource-card p{margin:.45rem 0 0;font-size:.83rem;line-height:1.45;color:#5c534a}
+.research-resource-guidance{padding-top:.4rem;border-top:1px solid rgba(96,82,67,.12)}
+.research-status{flex:0 0 auto;max-width:45%;padding:3px 7px;border-radius:999px;background:#edf3e9;color:#36573c;font:600 .64rem/1.25 Arial,sans-serif;text-align:center}
+.research-resource-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.research-link{font-size:.74rem!important;padding:7px 9px!important;max-width:100%;overflow-wrap:anywhere}
+.family-policy-footer{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:20px 16px 28px;color:#796f65;font:400 .75rem/1.4 Arial,sans-serif}
+.family-policy-link{border:0;background:transparent;padding:2px;color:#536b58;text-decoration:underline;text-underline-offset:3px;cursor:pointer;font:600 .77rem/1.3 Arial,sans-serif}
+.policy-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(31,27,24,.56);overflow:auto}
+.policy-overlay.hidden{display:none}
+.policy-dialog{width:min(760px,100%);max-height:min(86vh,900px);display:flex;flex-direction:column;border-radius:16px;background:#fff;box-shadow:0 24px 80px rgba(0,0,0,.3)}
+.policy-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:18px 20px 14px;border-bottom:1px solid rgba(96,82,67,.15)}
+.policy-dialog-head h2{margin:.15rem 0 0}
+.policy-dialog-body{padding:4px 20px 22px;overflow:auto}
+.policy-dialog-body section{padding:14px 0;border-bottom:1px solid rgba(96,82,67,.13)}
+.policy-dialog-body section:last-child{border-bottom:0}
+.policy-dialog-body h3{margin:0 0 .45rem;font-size:1rem}
+.policy-dialog-body p{margin:.45rem 0;font-size:.88rem;line-height:1.52;color:#514940}
+body.policy-open{overflow:hidden}
+@media (max-width:640px){.contribution-mode-tabs{grid-template-columns:1fr}.research-resource-head{display:block}.research-status{display:inline-block;max-width:none;margin-top:6px}.policy-overlay{padding:8px}.policy-dialog{max-height:94vh}.policy-dialog-head{padding:15px}.policy-dialog-body{padding:3px 15px 18px}}

@@ -1,0 +1,58 @@
+name: One-time privacy history sanitisation
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  sanitise:
+    if: github.event.head_commit.message != 'Privacy-safe public history root'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Verify current public tree is already sanitised
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e supabase
+          test ! -e docs
+          test -f .github/workflows/pages.yml
+          test -f index.html
+          test -f app-v3.js
+
+      - name: Replace public branch history with clean snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t PUBLIC_BRANCHES < <(
+            git for-each-ref --format='%(refname:short)' refs/remotes/origin \
+              | sed 's#^origin/##' \
+              | grep -v '^HEAD$' \
+              | sort -u
+          )
+
+          git config user.name 'BlueKiwi81'
+          git config user.email 'werner.schrdr@gmail.com'
+
+          git checkout --orphan privacy-sanitized-root
+          git add -A
+          git commit -m 'Privacy-safe public history root'
+
+          for branch in "${PUBLIC_BRANCHES[@]}"; do
+            if [ "$branch" = "main" ]; then
+              continue
+            fi
+            git push origin "+HEAD:refs/heads/$branch"
+          done
+
+          git push origin '+HEAD:refs/heads/main'

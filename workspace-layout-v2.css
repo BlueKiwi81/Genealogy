@@ -1,0 +1,235 @@
+.intro-grid {
+  grid-template-columns: minmax(0, 1fr) 380px;
+}
+
+.intro-contribution-model {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.contribution-model-link {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.workspace {
+  align-items: start;
+}
+
+.side-column {
+  align-self: stretch;
+  position: relative;
+}
+
+#personPanel.selected-person-sticky {
+  position: sticky;
+  top: 14px;
+  z-index: 2;
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
+  scrollbar-gutter: auto;
+}
+
+.post-tree-tools {
+  display: grid;
+  gap: 18px;
+  margin: 18px 0 0;
+  width: 100%;
+}
+
+.contribution-workbench,
+.birthday-calendar-workbench {
+  padding: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.contribution-workbench {
+  border-color: rgba(94,73,53,.42);
+}
+
+.contribution-workbench > summary,
+.birthday-calendar-workbench > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 20px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.contribution-workbench > summary {
+  padding-top: 20px;
+  padding-bottom: 20px;
+  background: linear-gradient(90deg, rgba(236,224,209,.58), rgba(255,253,248,.15));
+}
+
+.birthday-calendar-workbench > summary {
+  padding-top: 15px;
+  padding-bottom: 15px;
+}
+
+.contribution-workbench > summary::-webkit-details-marker,
+.birthday-calendar-workbench > summary::-webkit-details-marker {
+  display: none;
+}
+
+.contribution-workbench > summary .eyebrow,
+.birthday-calendar-workbench > summary .eyebrow {
+  margin-bottom: 4px;
+}
+
+.contribution-workbench > summary strong,
+.birthday-calendar-workbench > summary strong {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.contribution-workbench > summary small,
+.birthday-calendar-workbench > summary small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font: .82rem/1.4 Arial, sans-serif;
+}
+
+.contribution-workbench-indicator {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 1.25rem/1 Arial, sans-serif;
+  transition: transform .16s ease;
+}
+
+.contribution-workbench[open] .contribution-workbench-indicator,
+.birthday-calendar-workbench[open] .contribution-workbench-indicator {
+  transform: rotate(45deg);
+}
+
+.contribution-workbench-body,
+.birthday-calendar-workbench-body {
+  border-top: 1px solid var(--line);
+  padding: 0 20px 20px;
+}
+
+.contribution-panel-inner {
+  max-width: none;
+  width: 100%;
+  padding-top: 20px;
+}
+
+.contribution-panel-inner > .eyebrow,
+.contribution-panel-inner > h2 {
+  display: none;
+}
+
+.contribution-panel-inner #contributionForm {
+  width: 100%;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.contribution-panel-inner #contributionForm > * {
+  grid-column: 1 / -1;
+}
+
+.contribution-panel-inner #contributionText {
+  width: 100%;
+  min-height: 210px;
+}
+
+.birthday-calendar-bottom {
+  width: 100%;
+  box-shadow: none;
+  border: 0;
+  padding: 20px 0 0;
+  background: transparent;
+}
+
+.birthday-calendar-bottom > .eyebrow,
+.birthday-calendar-bottom > h2 {
+  display: none;
+}
+
+.birthday-calendar-bottom .birthday-calendar-config-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, .8fr) minmax(360px, 1.2fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.birthday-calendar-bottom .birthday-calendar-scope-block,
+.birthday-calendar-bottom .birthday-calendar-checks-block {
+  display: grid;
+  gap: 10px;
+}
+
+.birthday-calendar-bottom .birthday-calendar-scope-block .birthday-calendar-help {
+  margin: 0;
+}
+
+.birthday-calendar-bottom .birthday-calendar-checks-block .birthday-calendar-check {
+  margin: 0;
+}
+
+.project-credit-note {
+  max-width: 980px;
+  margin: 26px auto 6px;
+  padding: 0 18px;
+  text-align: center;
+  color: var(--muted);
+  font: .78rem/1.45 Arial, sans-serif;
+}
+
+.project-credit-note strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+@media (min-width: 980px) {
+  .birthday-calendar-bottom .birthday-calendar-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1040px) {
+  .intro-grid {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+
+  #personPanel.selected-person-sticky {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .side-column {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .intro-grid,
+  .birthday-calendar-bottom .birthday-calendar-config-grid,
+  .contribution-panel-inner #contributionForm {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  #treeBelowTools,
+  .project-credit-note {
+    display: none !important;
+  }
+}
