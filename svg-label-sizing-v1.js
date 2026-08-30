@@ -36,18 +36,23 @@ function compactFrontierDate(value) {
   return [core, suffix].filter(Boolean).join(' | ');
 }
 
+function replaceTextIfChanged(node, nextValue) {
+  if (node.textContent === nextValue) return;
+  node.textContent = nextValue;
+}
+
 function applySvgLabelSizes() {
   if (!canvas) return;
   canvas.querySelectorAll('text[font-size]').forEach((node) => {
     const size = node.getAttribute('font-size');
-    if (size) node.style.fontSize = `${size}px`;
+    if (size && node.style.fontSize !== `${size}px`) node.style.fontSize = `${size}px`;
   });
 
   canvas.querySelectorAll('text.frontier-fan-label textPath').forEach((node) => {
-    node.textContent = compactFrontierName(node.textContent);
+    replaceTextIfChanged(node, compactFrontierName(node.textContent));
   });
   canvas.querySelectorAll('text.frontier-fan-date textPath').forEach((node) => {
-    node.textContent = compactFrontierDate(node.textContent);
+    replaceTextIfChanged(node, compactFrontierDate(node.textContent));
   });
 }
 
