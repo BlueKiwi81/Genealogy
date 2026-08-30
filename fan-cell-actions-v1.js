@@ -3,6 +3,7 @@ import { supabase } from './supabase-client-v1.js';
 const canvas = document.getElementById('treeCanvas');
 const centreSelect = document.getElementById('centreSelect');
 const frontierById = new Map();
+const frontierEntriesByPerson = new Map();
 const peopleById = new Map();
 let dialog = null;
 
@@ -21,6 +22,10 @@ function frontierTitle(candidate) {
     .filter(Boolean).join(' - ');
 }
 
+function statusLabel(value) {
+  return ({ strong: 'Strong lead', probable: 'Probable', hypothesis: 'Hypothesis', unresolved: 'Unresolved' })[value] || 'Research lead';
+}
+
 function installStyles() {
   if (document.getElementById('fanCellActionsStyles')) return;
   const style = document.createElement('style');
@@ -37,10 +42,13 @@ function installStyles() {
     .fan-cell-action-copy{margin:0;color:#65594f;font-size:12px;line-height:1.5}
     .fan-cell-action-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
     .fan-cell-action-actions .button{min-height:44px}
+    .fan-cell-action-frontier-launch{grid-column:1/-1;border-color:#c9a45f!important;background:#fff8e9!important;color:#5d4829!important}
     .fan-cell-action-note{margin:0;padding:10px 11px;border-radius:11px;background:#f4eee7;color:#6b5d51;font-size:10.5px;line-height:1.45}
     .fan-cell-action-frontier{padding:11px 12px;border:1px solid #e4d9cd;border-radius:12px;background:#fffaf3}
     .fan-cell-action-frontier strong{display:block;margin-bottom:4px;font-size:12px}
     .fan-cell-action-frontier span{display:block;color:#665a50;font-size:10.5px;line-height:1.45}
+    .fan-cell-action-frontier-badge{display:inline-block!important;width:max-content;margin:0 0 6px;padding:3px 6px;border-radius:999px;background:#efe0c4;color:#6a5334!important;font-weight:700}
+    .fan-cell-action-warning{margin:0;padding:11px 12px;border:1px dashed #c9a45f;border-radius:11px;background:#fff8e9;color:#665338;font-size:10.8px;line-height:1.5}
     .fan-cell-action-error{margin:0;padding:9px 10px;border-radius:9px;background:#fff3f0;color:#8a3e36;font-size:10.5px;line-height:1.4}
     @media(max-width:560px){.fan-cell-action-actions{grid-template-columns:1fr}.fan-cell-action-head h3{font-size:18px}}
   `;
@@ -106,22 +114,46 @@ function openEdit(personId) {
   });
 }
 
+function showPersonFrontier(personId) {
+  const person = peopleById.get(personId);
+  const rows = frontierEntriesByPerson.get(personId) || [];
+  const name = personName(person) || 'Family member';
+  const cards = rows.length ? rows.map((row) => `
+    <div class="fan-cell-action-frontier">
+      <span class="fan-cell-action-frontier-badge">${esc(statusLabel(row.frontier_status))}</span>
+      <strong>${esc(row.title || 'Family research lead')}</strong>
+      ${row.detail ? `<span>${esc(row.detail)}</span>` : ''}
+      ${row.evidence_note ? `<span>Evidence boundary: ${esc(row.evidence_note)}</span>` : ''}
+    </div>`).join('') : '<p class="fan-cell-action-note">No active research-frontier notes are attached to this person.</p>';
+  const body = `
+    <p class="fan-cell-action-warning"><strong>Provisional - not part of the established tree.</strong> These notes deliberately preserve promising but unproved routes. They may explain where the research is heading without turning a candidate into an ancestor.</p>
+    ${cards}
+    <div class="fan-cell-action-actions"><button type="button" class="button secondary" data-fan-action-back>Back</button><button type="button" class="button primary" data-fan-action-close>Close</button></div>`;
+  const backdrop = showDialog(name, 'Research frontier', body);
+  backdrop.querySelector('[data-fan-action-close]')?.addEventListener('click', closeDialog);
+  backdrop.querySelector('[data-fan-action-back]')?.addEventListener('click', () => showPersonActions(personId));
+}
+
 function showPersonActions(personId) {
   const person = peopleById.get(personId);
   const name = personName(person) || 'Family member';
   const pending = String(personId).startsWith('pending:');
   const source = String(person?.source_status || '').replaceAll('_', ' ');
+  const frontierRows = frontierEntriesByPerson.get(personId) || [];
   const body = `
-    <p class="fan-cell-action-copy">Choose what you want to do with this person. A single click still only selects them and shows their details.</p>
+    <p class="fan-cell-action-copy">Choose what you want to do with this person. A single click still selects them and shows their details.</p>
     ${source ? `<p class="fan-cell-action-note">Current evidence status: ${esc(source)}.</p>` : ''}
+    ${frontierRows.length ? `<p class="fan-cell-action-warning">This person has ${frontierRows.length} active research-frontier ${frontierRows.length === 1 ? 'note' : 'notes'}. They are intentionally kept separate from established ancestry.</p>` : ''}
     <div class="fan-cell-action-actions">
       <button type="button" class="button secondary" data-fan-action-edit${pending ? ' disabled' : ''}>${pending ? 'Edit after review' : 'Edit this person'}</button>
       <button type="button" class="button primary" data-fan-action-centre>Make family centre</button>
+      ${frontierRows.length ? `<button type="button" class="button secondary fan-cell-action-frontier-launch" data-fan-action-frontier>View research frontier (${frontierRows.length})</button>` : ''}
     </div>
     <p class="fan-cell-action-note">Making this person the centre switches to Family view. Their recorded spouse or partner is included whether living or deceased, unless that relationship is recorded as divorced.</p>
     ${pending ? '<p class="fan-cell-action-note">This person is already a pending addition. Further edits wait until the first change has been reviewed.</p>' : ''}`;
   const backdrop = showDialog(name, pending ? 'Pending family record' : 'Fan navigation', body);
   backdrop.querySelector('[data-fan-action-edit]')?.addEventListener('click', () => openEdit(personId));
+  backdrop.querySelector('[data-fan-action-frontier]')?.addEventListener('click', () => showPersonFrontier(personId));
   backdrop.querySelector('[data-fan-action-centre]')?.addEventListener('click', () => {
     if (familyCentre(personId)) closeDialog();
     else {
@@ -185,7 +217,6 @@ function actionNodeFromEvent(event) {
 function openFromNode(match) {
   if (!match) return;
   if (match.kind === 'frontier-marker') {
-    // The existing question-mark control already has its own single-click help dialog.
     return;
   }
   if (match.kind === 'person') {
@@ -197,9 +228,10 @@ function openFromNode(match) {
 }
 
 async function loadReferenceData() {
-  const [peopleResult, frontierResult] = await Promise.all([
+  const [peopleResult, frontierResult, entryResult] = await Promise.all([
     supabase.from('people').select('id,given_names,surname,source_status,is_active').eq('is_active', true),
     supabase.from('research_frontier_candidates').select('id,anchor_person_id,parent_slot,label,year_text,detail,evidence_note,priority,is_active').eq('is_active', true).order('priority'),
+    supabase.from('research_frontier_entries').select('id,person_id,frontier_status,title,detail,evidence_note,created_at,is_active').eq('is_active', true).order('created_at', { ascending: false }),
   ]);
   if (!peopleResult.error) {
     peopleById.clear();
@@ -208,6 +240,14 @@ async function loadReferenceData() {
   if (!frontierResult.error) {
     frontierById.clear();
     (frontierResult.data || []).forEach((candidate) => frontierById.set(candidate.id, candidate));
+  }
+  if (!entryResult.error) {
+    frontierEntriesByPerson.clear();
+    (entryResult.data || []).forEach((entry) => {
+      const rows = frontierEntriesByPerson.get(entry.person_id) || [];
+      rows.push(entry);
+      frontierEntriesByPerson.set(entry.person_id, rows);
+    });
   }
 }
 
@@ -233,6 +273,7 @@ if (canvas) {
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeDialog(); });
 document.addEventListener('genealogy:archive-ready', () => loadReferenceData().catch(() => {}));
 document.addEventListener('genealogy:tree-suggestions-updated', () => loadReferenceData().catch(() => {}));
+document.addEventListener('genealogy:frontier-updated', () => loadReferenceData().catch(() => {}));
 
 const { data: { session } } = await supabase.auth.getSession();
 if (session) await loadReferenceData().catch(() => {});
