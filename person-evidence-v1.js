@@ -64,27 +64,50 @@ async function legacySources(personId) {
   return (sources || []).map((source) => ({ ...source, person_note: notes.get(source.id) || null, kind: 'citation' }));
 }
 
+function addClaimLabel(map, evidenceId, value) {
+  const text = String(value || '').trim();
+  if (!text) return;
+  const existing = map.get(evidenceId) || [];
+  if (!existing.includes(text)) existing.push(text);
+  map.set(evidenceId, existing);
+}
+
 async function linkedEvidence(personId) {
-  const { data: claims, error: claimsError } = await supabase.from('genealogy_claims').select('id,claim_label').eq('person_id', personId);
-  if (claimsError) throw claimsError;
-  const claimIds = (claims || []).map((row) => row.id);
+  const { data: directClaims, error: directError } = await supabase.from('genealogy_claims').select('id,claim_label').eq('person_id', personId);
+  if (directError) throw directError;
+
+  const { data: relationships, error: relationshipError } = await supabase.from('relationships').select('id').or(`person1_id.eq.${personId},person2_id.eq.${personId}`);
+  if (relationshipError) throw relationshipError;
+  const relationshipIds = (relationships || []).map((row) => row.id).filter(Boolean);
+
+  let relationshipClaims = [];
+  if (relationshipIds.length) {
+    const { data, error } = await supabase.from('genealogy_claims').select('id,claim_label').in('relationship_id', relationshipIds);
+    if (error) throw error;
+    relationshipClaims = data || [];
+  }
+
+  const claims = [...(directClaims || []), ...relationshipClaims];
+  const claimIds = [...new Set(claims.map((row) => row.id).filter(Boolean))];
   let evidenceIds = [];
   const claimLabels = new Map();
   if (claimIds.length) {
     const { data: links, error } = await supabase.from('claim_evidence').select('claim_id,evidence_id,note').in('claim_id', claimIds);
     if (error) throw error;
     evidenceIds = (links || []).map((row) => row.evidence_id).filter(Boolean);
-    const byClaim = new Map((claims || []).map((row) => [row.id, row.claim_label]));
-    for (const row of links || []) claimLabels.set(row.evidence_id, byClaim.get(row.claim_id) || row.note || 'Linked family claim');
+    const byClaim = new Map(claims.map((row) => [row.id, row.claim_label]));
+    for (const row of links || []) addClaimLabel(claimLabels, row.evidence_id, byClaim.get(row.claim_id) || row.note || 'Linked family claim');
   }
+
   const { data: contributions, error: contributionError } = await supabase.from('contributions').select('payload').eq('target_person_id', personId).eq('status', 'approved');
   if (contributionError) throw contributionError;
   for (const contribution of contributions || []) for (const ref of contribution.payload?.evidence_items || []) if (ref?.id) evidenceIds.push(ref.id);
+
   const ids = [...new Set(evidenceIds)];
   if (!ids.length) return [];
   const { data, error } = await supabase.from('evidence_items').select('id,evidence_type,title,document_date,date_text,issuing_authority,repository,storage_path,original_filename,notes,visibility,review_status,source_class').in('id', ids).eq('review_status', 'approved');
   if (error) throw error;
-  return (data || []).map((item) => ({ ...item, claim_label: claimLabels.get(item.id) || null, kind: 'stored' }));
+  return (data || []).map((item) => ({ ...item, claim_label: (claimLabels.get(item.id) || []).join('; ') || null, kind: 'stored' }));
 }
 
 function citationCard(item) {
