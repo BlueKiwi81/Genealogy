@@ -1,5 +1,5 @@
-const CACHE = 'genealogy-admin-v9';
-const SHELL = ['./','./index.html','./admin.css?v=1','./tree-snapshot-v1.css?v=1','./voice-note-v1.css?v=1','../mobile-readability-v1.css?v=1','./admin.js?v=3','./tree-snapshot-v1.js?v=1','./intelligent-review-v1.js?v=3','./resume-refresh-v1.js?v=1','./tree-snapshot-centre-fit-v1.js','./manifest.webmanifest','./icon.svg'];
+const CACHE = 'genealogy-admin-v10';
+const SHELL = ['./','./index.html','./admin.css?v=1','./tree-snapshot-v1.css?v=1','./voice-note-v1.css?v=1','../mobile-readability-v1.css?v=1','./admin.js?v=3','./tree-snapshot-v1.js?v=1','./intelligent-review-v1.js?v=3','./resume-refresh-v1.js?v=1','./access-activity-v1.js?v=1','./tree-snapshot-centre-fit-v1.js','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
