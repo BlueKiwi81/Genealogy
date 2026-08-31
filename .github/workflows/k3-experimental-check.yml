@@ -1,0 +1,41 @@
+name: K-3 experimental checks
+
+on:
+  push:
+    branches: [k3-experimental]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout experimental branch
+        uses: actions/checkout@v6
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check about-v1.js
+          node --check family-bot-launcher-v2.js
+          node --check family-bot-conversation-v2.js
+
+      - name: Check K-3 isolation contract
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          about = Path('about-v1.js').read_text()
+          launcher = Path('family-bot-launcher-v2.js').read_text()
+          dialog = Path('family-bot-conversation-v2.js').read_text()
+
+          assert "import('./family-bot-launcher-v2.js?v=1')" in about
+          assert "import('./family-bot-conversation-v2.js?v=1')" in launcher
+          assert "genealogy-family-bot-v2" in dialog
+          assert 'MutationObserver' not in launcher
+          assert 'MutationObserver' not in dialog
+          assert 'window.fetch =' not in launcher
+          assert 'window.fetch =' not in dialog
+          assert 'supabase.functions.invoke=' not in dialog.replace(' ', '')
+          print('K-3 lazy-loading and isolation checks passed.')
+          PY
