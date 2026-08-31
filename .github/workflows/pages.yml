@@ -83,6 +83,13 @@ jobs:
           # public only as browser code; its data remains behind Supabase auth/RLS.
           cp -R admin-mobile _site/
 
+          # Parallel information-architecture preview. This publishes browser shell
+          # code only. Family-specific Story content remains in Supabase behind the
+          # same approved-member RLS boundary as the rest of the archive.
+          node --check preview/preview-shell.js
+          mkdir -p _site/preview
+          cp preview/index.html preview/preview.css preview/preview-shell.js _site/preview/
+
           # Controlled trial: the source renderer retains its conservative six-ring
           # development cap, while the published family site may render up to ten
           # ancestor rings when the user explicitly asks for all available generations.
