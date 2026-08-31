@@ -5,6 +5,7 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const INDIVIDUAL_CELL_LIMIT = 850;
 const ALWAYS_INDIVIDUAL_THROUGH_LEVEL = 5;
 const STYLE_ID = 'genealogyFanGrowthStyle';
+const SETTLE_QUIET_MS = 180;
 
 let entrancePlayed = false;
 let cleanupTimer = null;
@@ -12,6 +13,8 @@ let activeAnimations = [];
 let deferredTimers = [];
 let observedSvg = null;
 let visibilityObserver = null;
+let settlementObserver = null;
+let settleTimer = null;
 let eraReadyHandler = null;
 let growthStartedAt = 0;
 let activeGrowthSchedule = null;
@@ -268,6 +271,10 @@ function playEntrance(svg) {
   entrancePlayed = true;
   visibilityObserver?.disconnect();
   visibilityObserver = null;
+  settlementObserver?.disconnect();
+  settlementObserver = null;
+  if (settleTimer !== null) window.clearTimeout(settleTimer);
+  settleTimer = null;
 
   const { cells, schedule } = buildGrowthSchedule(svg);
   const individualKeys = keysToAnimateIndividually(cells, schedule);
@@ -289,6 +296,40 @@ function playEntrance(svg) {
   });
 }
 
+function canvasReadyForEntrance(svg) {
+  return Boolean(
+    svg
+    && svg.isConnected
+    && svg === currentFanSvg()
+    && canvas?.getAttribute('aria-busy') !== 'true'
+    && !canvas?.querySelector('.archive-loader,.map-view-loading')
+  );
+}
+
+function scheduleSettledEntrance(svg) {
+  if (!svg || entrancePlayed) return;
+  if (settleTimer !== null) window.clearTimeout(settleTimer);
+  settleTimer = window.setTimeout(() => {
+    settleTimer = null;
+    if (!canvasReadyForEntrance(svg)) {
+      scheduleSettledEntrance(svg);
+      return;
+    }
+    // Two paint frames ensure the completed SVG, labels and surrounding layout
+    // are actually on screen before the first growth keyframe starts.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (canvasReadyForEntrance(svg)) playEntrance(svg);
+    }));
+  }, SETTLE_QUIET_MS);
+}
+
+function watchForSettledTree(svg) {
+  settlementObserver?.disconnect();
+  settlementObserver = new MutationObserver(() => scheduleSettledEntrance(svg));
+  settlementObserver.observe(svg, { childList: true, subtree: true });
+  scheduleSettledEntrance(svg);
+}
+
 function armFanWhenReady() {
   if (entrancePlayed || !desktopViewport.matches || reducedMotion.matches || !canvas) return;
   const svg = currentFanSvg();
@@ -297,12 +338,13 @@ function armFanWhenReady() {
   ensurePreparationStyle();
   svg.classList.add('fan-growth-prepared');
   observedSvg = svg;
+  watchForSettledTree(svg);
 
   visibilityObserver?.disconnect();
   visibilityObserver = new IntersectionObserver((entries) => {
     const entry = entries.find((item) => item.target === observedSvg);
     if (!entry?.isIntersecting || entrancePlayed) return;
-    playEntrance(observedSvg);
+    scheduleSettledEntrance(observedSvg);
   }, {
     root: null,
     rootMargin: '0px 0px -35% 0px',
@@ -317,11 +359,3 @@ if (canvas) {
   window.addEventListener('pageshow', armFanWhenReady, { once: true });
   armFanWhenReady();
 }
-
-window.addEventListener('pagehide', () => {
-  visibilityObserver?.disconnect();
-  if (eraReadyHandler) observedSvg?.removeEventListener('genealogy:fan-era-scaffold-ready', eraReadyHandler);
-  window.clearTimeout(cleanupTimer);
-  deferredTimers.forEach((timer) => window.clearTimeout(timer));
-  activeAnimations.forEach((animation) => animation.cancel());
-});
