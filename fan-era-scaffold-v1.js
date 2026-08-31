@@ -205,6 +205,9 @@ function addEraLabel(overlay, value, radius, startAngle, endAngle, level, maxLev
 
   const text = document.createElementNS(SVG_NS, 'text');
   text.setAttribute('class', 'fan-era-label');
+  text.dataset.eraLevel = String(level);
+  text.dataset.eraStartAngle = String(startAngle);
+  text.dataset.eraEndAngle = String(endAngle);
   text.setAttribute('font-family', "'Arial Black',Arial,sans-serif");
   text.setAttribute('font-weight', '900');
   text.setAttribute('font-size', String(fontSize));
@@ -285,7 +288,10 @@ function applyEraScaffold() {
     }
   }
 
-  if (overlay.childNodes.length) svg.appendChild(overlay);
+  if (overlay.childNodes.length) {
+    svg.appendChild(overlay);
+    svg.dispatchEvent(new CustomEvent('genealogy:fan-era-scaffold-ready'));
+  }
 }
 
 function scheduleEraScaffold(delay = 80) {
