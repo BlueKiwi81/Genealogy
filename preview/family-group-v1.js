@@ -1,5 +1,6 @@
 import { supabase } from '../supabase-client-v1.js';
 import { preferredFamilyPartnerEntry } from '../relationship-rules-v1.js';
+import './preview-hotfix-v1.js';
 
 const cache = {
   people: [],
@@ -160,7 +161,7 @@ export async function renderFamilyGroup({ centreId, canvas, title, summary, stat
 
   const ancestry = `<div class="preview-group-ancestry">
     ${parentBranch(focus, `${name(focus)} - parents and grandparents`)}
-    ${partner ? parentBranch(partner, `${name(partner)} - parents and grandparents`) : '<section class="preview-group-branch"><p class="preview-group-branch-title">Partner ancestry</p><p class="preview-group-none">No current partner is linked.</p></section>'}
+    ${partner ? parentBranch(partner, `${name(partner)} - parents and grandparents`) : '<section class="preview-group-branch"><p class="preview-group-branch-title">Partner ancestry</p><p class="preview-group-none">No partner is linked for this family view.</p></section>'}
   </div>`;
 
   const waist = `<section class="preview-group-waist">
