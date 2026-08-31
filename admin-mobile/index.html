@@ -12,6 +12,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="./icon.svg" />
   <link rel="stylesheet" href="./admin.css?v=1" />
+  <link rel="stylesheet" href="./tree-snapshot-v1.css?v=1" />
   <link rel="stylesheet" href="./voice-note-v1.css?v=1" />
   <link rel="stylesheet" href="../mobile-readability-v1.css?v=1" />
   <title>Family Admin</title>
@@ -52,6 +53,23 @@
         </div>
         <button id="refreshButton" class="icon-button" type="button" aria-label="Refresh">↻</button>
       </header>
+
+      <section id="treeSnapshotCard" class="tree-snapshot-card card" aria-labelledby="treeSnapshotTitle">
+        <div class="tree-snapshot-head">
+          <div>
+            <p class="eyebrow">Current tree</p>
+            <h2 id="treeSnapshotTitle">Family fan</h2>
+          </div>
+          <div class="tree-snapshot-actions">
+            <span id="treeSnapshotDepth" class="tree-snapshot-depth">Loading</span>
+            <button id="treeSnapshotZoom" class="tree-snapshot-zoom" type="button" aria-pressed="false">Zoom</button>
+          </div>
+        </div>
+        <div id="treeSnapshotViewport" class="tree-snapshot-viewport">
+          <div class="tree-snapshot-loading">Building the current read-only family fan...</div>
+        </div>
+        <p id="treeSnapshotNote" class="tree-snapshot-note">Read-only overview of the current family fan.</p>
+      </section>
 
       <section id="installNotice" class="install-notice hidden">
         <strong>Install this on your Home Screen</strong>
@@ -138,6 +156,7 @@
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <script type="module" src="./admin.js?v=3"></script>
+  <script type="module" src="./tree-snapshot-v1.js?v=1"></script>
   <script type="module" src="./intelligent-review-v1.js?v=3"></script>
   <script type="module" src="./resume-refresh-v1.js?v=1"></script>
 </body>
