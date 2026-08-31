@@ -4,6 +4,7 @@ import './unknown-parent-evidence-v1.js?v=2';
 import './unknown-parent-editor-v1.js?v=1';
 import './person-uncertainty-consolidator-v1.js?v=2';
 import './research-assistant-v1.js?v=4';
+import './family-bot-language-v1.js?v=1';
 import './family-bot-v1.js?v=1';
 import './research-assistant-refinement-v1.js?v=1';
 import './research-assistant-progress-v1.js?v=1';
