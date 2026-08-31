@@ -10,6 +10,8 @@ let entrancePlayed = false;
 let cleanupTimer = null;
 let activeAnimations = [];
 let deferredTimers = [];
+let observedSvg = null;
+let visibilityObserver = null;
 
 function currentFanSvg() {
   const svg = canvas?.querySelector(':scope > svg');
@@ -109,8 +111,6 @@ function keysToAnimateIndividually(cells, schedule) {
     if (item.level <= ALWAYS_INDIVIDUAL_THROUGH_LEVEL || item.meaningful) keys.add(key);
   });
 
-  // A meaningful outer cell must never grow out of an invisible parent. Include
-  // its whole inward path even on unusually deep, mostly-empty fans.
   [...keys].forEach((key) => {
     let item = schedule.get(key);
     while (item && item.level > 0) {
@@ -207,8 +207,8 @@ function cleanupGrowth(svg) {
 function playEntrance(svg) {
   if (!svg || entrancePlayed || !desktopViewport.matches || reducedMotion.matches) return;
   entrancePlayed = true;
-  ensurePreparationStyle();
-  svg.classList.add('fan-growth-prepared');
+  visibilityObserver?.disconnect();
+  visibilityObserver = null;
 
   const { cells, schedule } = buildGrowthSchedule(svg);
   const individualKeys = keysToAnimateIndividually(cells, schedule);
@@ -224,20 +224,37 @@ function playEntrance(svg) {
   });
 }
 
-function tryEntrance() {
+function armFanWhenReady() {
   if (entrancePlayed || !desktopViewport.matches || reducedMotion.matches || !canvas) return;
   const svg = currentFanSvg();
-  if (svg) playEntrance(svg);
+  if (!svg || svg === observedSvg) return;
+
+  ensurePreparationStyle();
+  svg.classList.add('fan-growth-prepared');
+  observedSvg = svg;
+
+  visibilityObserver?.disconnect();
+  visibilityObserver = new IntersectionObserver((entries) => {
+    const entry = entries.find((item) => item.target === observedSvg);
+    if (!entry?.isIntersecting || entrancePlayed) return;
+    playEntrance(observedSvg);
+  }, {
+    root: null,
+    rootMargin: '0px 0px -35% 0px',
+    threshold: 0.01,
+  });
+  visibilityObserver.observe(svg);
 }
 
 if (canvas) {
-  new MutationObserver(tryEntrance).observe(canvas, { childList: true, subtree: false });
-  document.addEventListener('genealogy:archive-ready', tryEntrance);
-  window.addEventListener('pageshow', tryEntrance, { once: true });
-  tryEntrance();
+  new MutationObserver(armFanWhenReady).observe(canvas, { childList: true, subtree: false });
+  document.addEventListener('genealogy:archive-ready', armFanWhenReady);
+  window.addEventListener('pageshow', armFanWhenReady, { once: true });
+  armFanWhenReady();
 }
 
 window.addEventListener('pagehide', () => {
+  visibilityObserver?.disconnect();
   window.clearTimeout(cleanupTimer);
   deferredTimers.forEach((timer) => window.clearTimeout(timer));
   activeAnimations.forEach((animation) => animation.cancel());
