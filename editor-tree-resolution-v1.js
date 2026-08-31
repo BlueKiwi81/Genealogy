@@ -2,6 +2,8 @@ import { supabase } from './supabase-client-v1.js';
 
 const UUID_RE = /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi;
 const scanned = new Map();
+const inFlight = new Set();
+let scanTimer = null;
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -186,20 +188,36 @@ async function scanCard(card) {
   if (reviewPanel.classList.contains('review-approve')) return;
 
   const signature = reviewPanel.textContent?.trim() || '';
-  if (scanned.get(changeSetId) === signature && card.querySelector('.tree-ai-resolution-assistant')) return;
+  if (scanned.get(changeSetId) === signature || inFlight.has(changeSetId)) return;
 
-  const context = await loadChangeAndReview(changeSetId);
-  if (!context) return;
-  const matches = await findMatches(context.change, context.review);
-  scanned.set(changeSetId, signature);
-  card.querySelector('.tree-ai-resolution-assistant')?.remove();
-  if (matches.length) renderMatches(card, matches);
+  inFlight.add(changeSetId);
+  try {
+    const context = await loadChangeAndReview(changeSetId);
+    if (!context) {
+      scanned.set(changeSetId, signature);
+      return;
+    }
+    const matches = await findMatches(context.change, context.review);
+    scanned.set(changeSetId, signature);
+    card.querySelector('.tree-ai-resolution-assistant')?.remove();
+    if (matches.length) renderMatches(card, matches);
+  } finally {
+    inFlight.delete(changeSetId);
+  }
 }
 
 function scanAll() {
   document.querySelectorAll('[data-tree-change-id]').forEach((card) => {
     void scanCard(card);
   });
+}
+
+function scheduleScan(delay = 90) {
+  if (scanTimer !== null) window.clearTimeout(scanTimer);
+  scanTimer = window.setTimeout(() => {
+    scanTimer = null;
+    scanAll();
+  }, delay);
 }
 
 document.addEventListener('click', async (event) => {
@@ -268,10 +286,10 @@ document.addEventListener('click', async (event) => {
 installStyles();
 scanAll();
 
-const observer = new MutationObserver(() => scanAll());
+const observer = new MutationObserver(() => scheduleScan());
 observer.observe(document.body, { childList: true, subtree: true });
 
 document.addEventListener('genealogy:tree-suggestions-updated', () => {
   scanned.clear();
-  setTimeout(scanAll, 60);
+  scheduleScan(60);
 });
