@@ -90,10 +90,14 @@ jobs:
           sed -i 's/const RENDER_DEPTH_CAP = 6;/const RENDER_DEPTH_CAP = 10;/' _site/app-v3.js
           grep -q 'const RENDER_DEPTH_CAP = 10;' _site/app-v3.js
 
-          # Cache-bust the independently loaded map module when the refined historical
-          # context layer changes, so returning browsers do not reuse the earlier map.
-          sed -i "s#import('./map-view-v1.js?v=2')#import('./map-view-v1.js?v=3')#" _site/app-v3.js
-          grep -q "import('./map-view-v1.js?v=3')" _site/app-v3.js
+          # Publish map v2 as an explicit browser asset and switch the dynamic map
+          # import to the new event-dot renderer. Keeping this as a build transform
+          # preserves the conservative source renderer while making the deployed map
+          # independently cacheable and reversible.
+          cp map-view-v2.js _site/map-view-v2.js
+          cp map-view-v2.css _site/map-view-v2.css
+          sed -i "s#import('./map-view-v1.js?v=2')#import('./map-view-v2.js?v=1')#" _site/app-v3.js
+          grep -q "import('./map-view-v2.js?v=1')" _site/app-v3.js
 
           # Remove source-only identity/location hints from the public browser bundle.
           # Approved users obtain family identities and feature anchors from Supabase
