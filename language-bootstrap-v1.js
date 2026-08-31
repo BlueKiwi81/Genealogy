@@ -2,7 +2,7 @@ if (!document.getElementById('genealogyLanguageStyles')) {
   const link = document.createElement('link');
   link.id = 'genealogyLanguageStyles';
   link.rel = 'stylesheet';
-  link.href = './language-v1.css?v=2';
+  link.href = './language-v1.css?v=3';
   document.head.appendChild(link);
 }
 
