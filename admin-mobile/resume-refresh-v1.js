@@ -1,4 +1,5 @@
 import './tree-snapshot-centre-fit-v1.js';
+import './access-activity-v1.js?v=1';
 
 const refreshButton = document.getElementById('refreshButton');
 let lastRefreshRequest = 0;
