@@ -78,4 +78,4 @@ window.GenealogyAbout = { show: showAbout, version: APP_VERSION, updatedAt: UPDA
 
 // K-3 is deliberately lazy and non-critical. A launcher failure must never block
 // authentication, archive loading, the family tree or layout.
-import('./family-bot-launcher-v2.js?v=1').catch((error) => console.error('K-3 launcher unavailable', error));
+import('./family-bot-launcher-v2.js?v=2').catch((error) => console.error('K-3 launcher unavailable', error));
