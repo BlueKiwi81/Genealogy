@@ -1,10 +1,12 @@
 import { supabase } from '../supabase-client-v1.js';
+import { renderFamilyGroup } from './family-group-v1.js';
 
 const state = {
   view: 'home',
-  lastTreeMode: 'ancestry',
+  treeMode: 'fan',
   stories: null,
   initialized: false,
+  groupRenderToken: 0,
 };
 
 const ui = {
@@ -20,6 +22,9 @@ const ui = {
   viewSummary: document.getElementById('viewSummary'),
   treeEyebrow: document.getElementById('previewTreeEyebrow'),
   treeHeading: document.getElementById('previewTreeHeading'),
+  treeCanvas: document.getElementById('treeCanvas'),
+  treeStatus: document.getElementById('treeStatus'),
+  centreSelect: document.getElementById('centreSelect'),
 };
 
 const BLOCK_LABELS = {
@@ -55,123 +60,147 @@ function nativeViewSelect() {
   return document.getElementById('treeViewMode');
 }
 
-function treePanel() {
-  return document.querySelector('.tree-panel');
+function generationSelect() {
+  return document.getElementById('generationDepth');
 }
 
-function snapshotActive() {
-  return Boolean(treePanel()?.classList.contains('snapshot-active'));
-}
-
-function setPerspective(value) {
-  const button = document.querySelector(`[data-tree-perspective="${value}"]`);
-  if (!button) return false;
-  if (button.getAttribute('aria-pressed') !== 'true') button.click();
-  return true;
-}
-
-function setNativeTreeMode(mode) {
+function setNativeMode(mode) {
   const select = nativeViewSelect();
   if (!select) return false;
-  if (mode !== 'map') state.lastTreeMode = mode;
   if (select.value !== mode) {
     select.value = mode;
     select.dispatchEvent(new Event('change', { bubbles: true }));
   }
-  syncTreeModeButtons();
   return true;
 }
 
-function syncTreeModeButtons() {
-  const activeMode = snapshotActive() ? 'family' : 'ancestry';
+function setGenerationVisibility(visible) {
+  const select = generationSelect();
+  const label = select?.closest('label');
+  if (label) label.hidden = !visible;
+}
+
+function capFanDepth() {
+  const select = generationSelect();
+  if (!select) return;
+  if ([...select.options].some((option) => option.value === '5') && select.value !== '5') {
+    select.value = '5';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+}
+
+function syncTreeButtons() {
   document.querySelectorAll('[data-preview-tree-mode]').forEach((button) => {
-    const active = state.view === 'tree' && button.dataset.previewTreeMode === activeMode;
+    const active = button.dataset.previewTreeMode === state.treeMode;
     button.classList.toggle('is-active', active);
     button.setAttribute('aria-pressed', String(active));
   });
 }
 
-function cleanFamilyGroupCopy() {
-  if (state.view !== 'tree' || !snapshotActive()) return;
-  if (ui.viewSummary) ui.viewSummary.textContent = 'Parents and grandparents form the upper half of the hourglass. The selected person and partner sit at the waist. Children, their partners and grandchildren expand below. Sibling households are deliberately kept out of the focus generation.';
-  if (ui.treeHeading) ui.treeHeading.textContent = 'Family group';
-  const heading = treePanel()?.querySelector('.panel-head h2');
-  if (heading) heading.textContent = 'Family group';
-  const status = document.getElementById('treeStatus');
-  if (status) status.textContent = 'Focused family group: ancestors above, selected household at the centre, descendants below.';
-}
-
-function activateTreeMode(mode) {
-  if (mode === 'family') {
-    state.lastTreeMode = 'family';
-    setNativeTreeMode('family');
-    window.setTimeout(() => {
-      setPerspective('snapshot');
-      syncTreeModeButtons();
-      cleanFamilyGroupCopy();
-    }, 0);
-    return;
-  }
-  state.lastTreeMode = 'ancestry';
-  setPerspective('fan');
-  setNativeTreeMode('ancestry');
-  syncTreeModeButtons();
-}
-
-function ensureTreeModeControls() {
+function ensureTreeControls() {
   const select = nativeViewSelect();
-  if (!select || document.getElementById('previewTreeModes')) return;
-  const label = select.closest('label');
-  label?.classList.add('preview-native-view-hidden');
+  if (!select) return false;
+  select.closest('label')?.classList.add('preview-native-view-hidden');
+  if (document.getElementById('previewTreeModes')) {
+    syncTreeButtons();
+    return true;
+  }
 
   const modes = document.createElement('div');
   modes.id = 'previewTreeModes';
   modes.className = 'preview-tree-modes';
   modes.setAttribute('aria-label', 'Family tree view');
   modes.innerHTML = `
-    <button type="button" class="preview-tree-mode" data-preview-tree-mode="ancestry">Family Fan</button>
-    <button type="button" class="preview-tree-mode" data-preview-tree-mode="family">Family Group</button>`;
+    <button type="button" class="preview-tree-mode" data-preview-tree-mode="fan">Family Fan</button>
+    <button type="button" class="preview-tree-mode" data-preview-tree-mode="group">Family Group</button>`;
 
   const controls = select.closest('.enhanced-tree-controls');
   if (controls) controls.prepend(modes);
-  else label?.insertAdjacentElement('beforebegin', modes);
+  else select.closest('label')?.insertAdjacentElement('beforebegin', modes);
 
   modes.addEventListener('click', (event) => {
     const button = event.target.closest('[data-preview-tree-mode]');
     if (!button) return;
+    state.treeMode = button.dataset.previewTreeMode;
+    syncTreeButtons();
     setPrimaryView('tree');
-    activateTreeMode(button.dataset.previewTreeMode);
   });
 
-  select.addEventListener('change', () => {
-    if (select.value !== 'map' && !snapshotActive()) state.lastTreeMode = select.value === 'family' ? 'family' : 'ancestry';
-    syncTreeModeButtons();
-  });
-  syncTreeModeButtons();
-}
-
-function setExploreCopy(view) {
-  if (!ui.viewTitle || !ui.viewSummary) return;
-  if (view === 'places') {
-    ui.viewTitle.textContent = 'Places & Journeys';
-    ui.viewSummary.textContent = 'Follow where family lives unfolded, where people moved, and which historical events belong to the surrounding landscape rather than to a personal-presence claim.';
-    if (ui.treeEyebrow) ui.treeEyebrow.textContent = 'Family geography';
-    if (ui.treeHeading) ui.treeHeading.textContent = 'Our family map';
-  } else {
-    ui.viewTitle.textContent = 'Family Tree';
-    ui.viewSummary.textContent = 'Explore the same family relationships through the ancestral fan or the focussed family group.';
-    if (ui.treeEyebrow) ui.treeEyebrow.textContent = 'Interactive tree';
-    if (ui.treeHeading) ui.treeHeading.textContent = state.lastTreeMode === 'family' ? 'Family group' : 'Family fan';
-  }
+  syncTreeButtons();
+  return true;
 }
 
 function updatePrimaryTabs(view) {
-  document.querySelectorAll('[data-preview-view]').forEach((button) => {
-    if (!button.classList.contains('preview-primary-tab')) return;
+  document.querySelectorAll('.preview-primary-tab[data-preview-view]').forEach((button) => {
     const active = button.dataset.previewView === view;
     button.classList.toggle('is-active', active);
-    button.setAttribute('aria-current', active ? 'page' : 'false');
+    if (active) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
   });
+}
+
+function setExploreLabels(view) {
+  if (view === 'places') {
+    if (ui.treeEyebrow) ui.treeEyebrow.textContent = 'Family geography';
+    if (ui.treeHeading) ui.treeHeading.textContent = 'Our family map';
+    if (ui.viewTitle) ui.viewTitle.textContent = 'Places & Journeys';
+    if (ui.viewSummary) ui.viewSummary.textContent = 'Follow where family lives unfolded, where people moved, and which historical events belong to the surrounding landscape rather than to a personal-presence claim.';
+    return;
+  }
+  if (ui.treeEyebrow) ui.treeEyebrow.textContent = 'Interactive tree';
+  if (ui.treeHeading) ui.treeHeading.textContent = state.treeMode === 'group' ? 'Family group' : 'Family fan';
+}
+
+function selectCentrePerson(personId) {
+  const select = ui.centreSelect;
+  if (!select || !personId) return;
+  const option = [...select.options].find((item) => item.value === personId);
+  if (!option) return;
+  select.value = personId;
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+async function renderGroupSafely() {
+  if (state.view !== 'tree' || state.treeMode !== 'group' || !ui.centreSelect?.value) return;
+  const token = ++state.groupRenderToken;
+  try {
+    await renderFamilyGroup({
+      centreId: ui.centreSelect.value,
+      canvas: ui.treeCanvas,
+      title: ui.viewTitle,
+      summary: ui.viewSummary,
+      status: ui.treeStatus,
+      onSelect: (id) => {
+        selectCentrePerson(id);
+        window.setTimeout(() => renderGroupSafely(), 80);
+      },
+    });
+  } catch (error) {
+    if (token !== state.groupRenderToken || state.view !== 'tree' || state.treeMode !== 'group') return;
+    if (ui.treeStatus) ui.treeStatus.textContent = `Family Group could not load: ${error?.message || 'unknown error'}`;
+  }
+}
+
+function showFan() {
+  state.groupRenderToken += 1;
+  document.body.classList.remove('preview-group-mode');
+  setGenerationVisibility(true);
+  setNativeMode('ancestry');
+  window.setTimeout(() => capFanDepth(), 30);
+}
+
+function showGroup() {
+  document.body.classList.add('preview-group-mode');
+  setGenerationVisibility(false);
+  setNativeMode('ancestry');
+  window.setTimeout(() => renderGroupSafely(), 70);
+}
+
+function showPlaces() {
+  state.groupRenderToken += 1;
+  document.body.classList.remove('preview-group-mode');
+  setGenerationVisibility(false);
+  setNativeMode('map');
 }
 
 function setPrimaryView(view) {
@@ -183,22 +212,23 @@ function setPrimaryView(view) {
   ui.explore?.classList.toggle('hidden', !['tree', 'places'].includes(view));
   ui.story?.classList.toggle('hidden', view !== 'story');
 
-  ensureTreeModeControls();
+  ensureTreeControls();
 
   if (view === 'tree') {
-    setExploreCopy('tree');
-    window.setTimeout(() => activateTreeMode(state.lastTreeMode === 'family' ? 'family' : 'ancestry'), 0);
+    setExploreLabels('tree');
+    if (state.treeMode === 'group') showGroup();
+    else showFan();
   } else if (view === 'places') {
-    setExploreCopy('places');
-    setPerspective('fan');
-    window.setTimeout(() => setNativeTreeMode('map'), 0);
+    setExploreLabels('places');
+    showPlaces();
   } else if (view === 'story') {
-    loadStoryIndex();
+    state.groupRenderToken += 1;
+    void loadStoryIndex();
+  } else {
+    state.groupRenderToken += 1;
   }
 
-  if (view !== 'story') closeStoryReader(false);
-  syncTreeModeButtons();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (view !== 'story') closeStoryReader();
 }
 
 function storyCard(section) {
@@ -214,11 +244,12 @@ function storyCard(section) {
 }
 
 async function loadStoryIndex(force = false) {
-  if (!ui.storyIndex || (state.stories && !force)) {
-    if (state.stories) renderStoryIndex();
+  if (!ui.storyIndex) return;
+  if (state.stories && !force) {
+    renderStoryIndex();
     return;
   }
-  ui.storyStatus.textContent = 'Loading family stories...';
+  if (ui.storyStatus) ui.storyStatus.textContent = 'Loading family stories...';
   const { data, error } = await supabase
     .from('story_sections')
     .select('id,slug,title,subtitle,summary,line_key,date_from,date_to,hero_place_id,primary_person_id,sort_order,estimated_minutes')
@@ -227,23 +258,21 @@ async function loadStoryIndex(force = false) {
     .order('sort_order');
 
   if (error) {
-    ui.storyStatus.textContent = '';
+    if (ui.storyStatus) ui.storyStatus.textContent = '';
     ui.storyIndex.innerHTML = `<div class="story-error">The Story layer could not be loaded: ${esc(error.message)}</div>`;
     return;
   }
   state.stories = data || [];
-  ui.storyStatus.textContent = '';
+  if (ui.storyStatus) ui.storyStatus.textContent = '';
   renderStoryIndex();
 }
 
 function renderStoryIndex() {
   if (!ui.storyIndex) return;
-  closeStoryReader(false);
-  if (!state.stories?.length) {
-    ui.storyIndex.innerHTML = '<div class="panel"><p>No story sections are published yet.</p></div>';
-    return;
-  }
-  ui.storyIndex.innerHTML = state.stories.map(storyCard).join('');
+  closeStoryReader();
+  ui.storyIndex.innerHTML = state.stories?.length
+    ? state.stories.map(storyCard).join('')
+    : '<div class="panel"><p>No story sections are published yet.</p></div>';
 }
 
 async function resolvePerson(id) {
@@ -282,16 +311,18 @@ function blockHtml(block) {
 
 async function openStory(slug) {
   if (!slug || !ui.storyReader) return;
-  ui.storyStatus.textContent = 'Opening story...';
+  if (ui.storyStatus) ui.storyStatus.textContent = 'Opening story...';
   const sectionResult = await supabase.from('story_sections')
     .select('id,slug,title,subtitle,summary,line_key,date_from,date_to,hero_place_id,primary_person_id,estimated_minutes')
     .eq('slug', slug).eq('status', 'published').eq('is_active', true).single();
+
   if (sectionResult.error) {
-    ui.storyStatus.textContent = '';
+    if (ui.storyStatus) ui.storyStatus.textContent = '';
     ui.storyReader.classList.remove('hidden');
     ui.storyReader.innerHTML = `<div class="story-error">This story could not be opened: ${esc(sectionResult.error.message)}</div>`;
     return;
   }
+
   const section = sectionResult.data;
   const [blocksResult, person, place] = await Promise.all([
     supabase.from('story_blocks')
@@ -300,7 +331,8 @@ async function openStory(slug) {
     resolvePerson(section.primary_person_id),
     resolvePlace(section.hero_place_id),
   ]);
-  ui.storyStatus.textContent = '';
+
+  if (ui.storyStatus) ui.storyStatus.textContent = '';
   if (blocksResult.error) {
     ui.storyReader.classList.remove('hidden');
     ui.storyReader.innerHTML = `<div class="story-error">The story text could not be loaded: ${esc(blocksResult.error.message)}</div>`;
@@ -315,7 +347,7 @@ async function openStory(slug) {
   if (section.hero_place_id) crosslinks.push('<button type="button" class="button secondary" data-story-map>See this world in Places &amp; Journeys</button>');
 
   ui.storyIndex.classList.add('hidden');
-  ui.storyBack.classList.remove('hidden');
+  ui.storyBack?.classList.remove('hidden');
   ui.storyReader.classList.remove('hidden');
   ui.storyReader.innerHTML = `
     <header class="story-reader-header">
@@ -327,25 +359,14 @@ async function openStory(slug) {
     </header>
     ${(blocksResult.data || []).map(blockHtml).join('')}
     ${crosslinks.length ? `<div class="story-crosslinks">${crosslinks.join('')}</div>` : ''}`;
-  window.scrollTo({ top: ui.story.offsetTop - 12, behavior: 'smooth' });
 }
 
-function closeStoryReader(scroll = true) {
+function closeStoryReader() {
   if (!ui.storyReader || !ui.storyIndex) return;
   ui.storyReader.classList.add('hidden');
   ui.storyReader.replaceChildren();
   ui.storyIndex.classList.remove('hidden');
   ui.storyBack?.classList.add('hidden');
-  if (scroll && state.view === 'story') window.scrollTo({ top: ui.story.offsetTop - 12, behavior: 'smooth' });
-}
-
-function centrePerson(personId) {
-  const select = document.getElementById('centreSelect');
-  if (!select || !personId) return;
-  if ([...select.options].some((option) => option.value === personId)) {
-    select.value = personId;
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-  }
 }
 
 function wireEvents() {
@@ -357,45 +378,45 @@ function wireEvents() {
     }
     const story = event.target.closest('[data-story-slug]');
     if (story) {
-      openStory(story.dataset.storySlug);
+      void openStory(story.dataset.storySlug);
       return;
     }
     const personButton = event.target.closest('[data-story-person]');
     if (personButton) {
-      centrePerson(personButton.dataset.storyPerson);
-      state.lastTreeMode = 'ancestry';
+      selectCentrePerson(personButton.dataset.storyPerson);
+      state.treeMode = 'fan';
+      syncTreeButtons();
       setPrimaryView('tree');
       return;
     }
     if (event.target.closest('[data-story-map]')) setPrimaryView('places');
   });
-  ui.storyBack?.addEventListener('click', () => closeStoryReader(true));
+
+  ui.storyBack?.addEventListener('click', () => closeStoryReader());
+  ui.centreSelect?.addEventListener('change', () => {
+    if (state.view === 'tree' && state.treeMode === 'group') {
+      window.setTimeout(() => renderGroupSafely(), 80);
+    }
+  });
 }
 
 function initializePreview() {
   if (state.initialized) return;
   state.initialized = true;
   wireEvents();
+  ensureTreeControls();
   setPrimaryView('home');
-
-  const controlsObserver = new MutationObserver(() => ensureTreeModeControls());
-  controlsObserver.observe(ui.appArea || document.body, { childList: true, subtree: true });
-
-  const panel = treePanel();
-  if (panel) {
-    const panelObserver = new MutationObserver(() => {
-      syncTreeModeButtons();
-      cleanFamilyGroupCopy();
-    });
-    panelObserver.observe(panel, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-  }
-  ensureTreeModeControls();
+  [40, 160, 500].forEach((delay) => window.setTimeout(() => ensureTreeControls(), delay));
 }
 
 const appObserver = new MutationObserver(() => {
-  if (ui.appArea && !ui.appArea.classList.contains('hidden')) initializePreview();
+  if (ui.appArea && !ui.appArea.classList.contains('hidden')) {
+    initializePreview();
+    appObserver.disconnect();
+  }
 });
+
 if (ui.appArea) {
-  appObserver.observe(ui.appArea, { attributes: true, attributeFilter: ['class'] });
   if (!ui.appArea.classList.contains('hidden')) initializePreview();
+  else appObserver.observe(ui.appArea, { attributes: true, attributeFilter: ['class'] });
 }
