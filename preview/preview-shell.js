@@ -55,6 +55,21 @@ function nativeViewSelect() {
   return document.getElementById('treeViewMode');
 }
 
+function treePanel() {
+  return document.querySelector('.tree-panel');
+}
+
+function snapshotActive() {
+  return Boolean(treePanel()?.classList.contains('snapshot-active'));
+}
+
+function setPerspective(value) {
+  const button = document.querySelector(`[data-tree-perspective="${value}"]`);
+  if (!button) return false;
+  if (button.getAttribute('aria-pressed') !== 'true') button.click();
+  return true;
+}
+
 function setNativeTreeMode(mode) {
   const select = nativeViewSelect();
   if (!select) return false;
@@ -63,16 +78,44 @@ function setNativeTreeMode(mode) {
     select.value = mode;
     select.dispatchEvent(new Event('change', { bubbles: true }));
   }
-  syncTreeModeButtons(mode);
+  syncTreeModeButtons();
   return true;
 }
 
-function syncTreeModeButtons(mode = nativeViewSelect()?.value) {
+function syncTreeModeButtons() {
+  const activeMode = snapshotActive() ? 'family' : 'ancestry';
   document.querySelectorAll('[data-preview-tree-mode]').forEach((button) => {
-    const active = button.dataset.previewTreeMode === mode;
+    const active = state.view === 'tree' && button.dataset.previewTreeMode === activeMode;
     button.classList.toggle('is-active', active);
     button.setAttribute('aria-pressed', String(active));
   });
+}
+
+function cleanFamilyGroupCopy() {
+  if (state.view !== 'tree' || !snapshotActive()) return;
+  if (ui.viewSummary) ui.viewSummary.textContent = 'Parents and grandparents form the upper half of the hourglass. The selected person and partner sit at the waist. Children, their partners and grandchildren expand below. Sibling households are deliberately kept out of the focus generation.';
+  if (ui.treeHeading) ui.treeHeading.textContent = 'Family group';
+  const heading = treePanel()?.querySelector('.panel-head h2');
+  if (heading) heading.textContent = 'Family group';
+  const status = document.getElementById('treeStatus');
+  if (status) status.textContent = 'Focused family group: ancestors above, selected household at the centre, descendants below.';
+}
+
+function activateTreeMode(mode) {
+  if (mode === 'family') {
+    state.lastTreeMode = 'family';
+    setNativeTreeMode('family');
+    window.setTimeout(() => {
+      setPerspective('snapshot');
+      syncTreeModeButtons();
+      cleanFamilyGroupCopy();
+    }, 0);
+    return;
+  }
+  state.lastTreeMode = 'ancestry';
+  setPerspective('fan');
+  setNativeTreeMode('ancestry');
+  syncTreeModeButtons();
 }
 
 function ensureTreeModeControls() {
@@ -97,14 +140,14 @@ function ensureTreeModeControls() {
     const button = event.target.closest('[data-preview-tree-mode]');
     if (!button) return;
     setPrimaryView('tree');
-    setNativeTreeMode(button.dataset.previewTreeMode);
+    activateTreeMode(button.dataset.previewTreeMode);
   });
 
   select.addEventListener('change', () => {
-    if (select.value !== 'map') state.lastTreeMode = select.value;
-    syncTreeModeButtons(select.value);
+    if (select.value !== 'map' && !snapshotActive()) state.lastTreeMode = select.value === 'family' ? 'family' : 'ancestry';
+    syncTreeModeButtons();
   });
-  syncTreeModeButtons(select.value);
+  syncTreeModeButtons();
 }
 
 function setExploreCopy(view) {
@@ -144,16 +187,17 @@ function setPrimaryView(view) {
 
   if (view === 'tree') {
     setExploreCopy('tree');
-    const desired = state.lastTreeMode === 'map' ? 'ancestry' : state.lastTreeMode;
-    window.setTimeout(() => setNativeTreeMode(desired || 'ancestry'), 0);
+    window.setTimeout(() => activateTreeMode(state.lastTreeMode === 'family' ? 'family' : 'ancestry'), 0);
   } else if (view === 'places') {
     setExploreCopy('places');
+    setPerspective('fan');
     window.setTimeout(() => setNativeTreeMode('map'), 0);
   } else if (view === 'story') {
     loadStoryIndex();
   }
 
   if (view !== 'story') closeStoryReader(false);
+  syncTreeModeButtons();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -239,10 +283,9 @@ function blockHtml(block) {
 async function openStory(slug) {
   if (!slug || !ui.storyReader) return;
   ui.storyStatus.textContent = 'Opening story...';
-  const sectionQuery = supabase.from('story_sections')
+  const sectionResult = await supabase.from('story_sections')
     .select('id,slug,title,subtitle,summary,line_key,date_from,date_to,hero_place_id,primary_person_id,estimated_minutes')
     .eq('slug', slug).eq('status', 'published').eq('is_active', true).single();
-  const sectionResult = await sectionQuery;
   if (sectionResult.error) {
     ui.storyStatus.textContent = '';
     ui.storyReader.classList.remove('hidden');
@@ -337,6 +380,15 @@ function initializePreview() {
 
   const controlsObserver = new MutationObserver(() => ensureTreeModeControls());
   controlsObserver.observe(ui.appArea || document.body, { childList: true, subtree: true });
+
+  const panel = treePanel();
+  if (panel) {
+    const panelObserver = new MutationObserver(() => {
+      syncTreeModeButtons();
+      cleanFamilyGroupCopy();
+    });
+    panelObserver.observe(panel, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  }
   ensureTreeModeControls();
 }
 
