@@ -88,8 +88,20 @@ jobs:
           # same approved-member RLS boundary as the rest of the archive.
           node --check preview/preview-shell.js
           node --check preview/family-group-v1.js
+          node --check preview/preview-hotfix-v1.js
+          node --check preview/places-map-v1.js
           mkdir -p _site/preview
-          cp preview/index.html preview/preview.css preview/preview-shell.js preview/family-group-v1.js preview/family-group-v1.css _site/preview/
+          cp preview/index.html preview/preview.css preview/preview-shell.js preview/family-group-v1.js preview/family-group-v1.css preview/preview-hotfix-v1.js preview/preview-hotfix-v1.css preview/places-map-v1.js _site/preview/
+          python3 - <<'PY'
+          from pathlib import Path
+          index = Path('_site/preview/index.html')
+          text = index.read_text(encoding='utf-8')
+          marker = '<link rel="stylesheet" href="./preview.css?v=1" />'
+          if marker not in text:
+              raise SystemExit('Preview stylesheet marker missing.')
+          text = text.replace(marker, marker + '\n  <link rel="stylesheet" href="./preview-hotfix-v1.css?v=1" />', 1)
+          index.write_text(text, encoding='utf-8')
+          PY
 
           # Controlled trial: the source renderer retains its conservative six-ring
           # development cap, while the published family site may render up to ten
@@ -134,7 +146,7 @@ jobs:
           text, en_changed = re.subn(r'targeted [A-Z][A-Za-z-]+ research', 'targeted local research', text, count=1)
           text, af_changed = re.subn(r'geteikende [A-Z][A-Za-z-]+-navorsing', 'geteikende plaaslike navorsing', text, count=1)
           if en_changed != 1 or af_changed != 1:
-              raise SystemExit('Expected local research examples were not found exactly once in each language.')
+            raise SystemExit('Expected local research examples were not found exactly once in each language.')
           research.write_text(text, encoding='utf-8')
           PY
 
