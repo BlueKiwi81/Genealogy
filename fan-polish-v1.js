@@ -1,4 +1,5 @@
 import './person-photos-v1.js';
+import './fan-entrance-v1.js';
 
 const treeCanvas = document.getElementById('treeCanvas');
 const treePanel = document.querySelector('.tree-panel');
