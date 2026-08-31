@@ -64,7 +64,7 @@ async function legacySources(personId) {
   return (sources || []).map((source) => ({ ...source, person_note: notes.get(source.id) || null, kind: 'citation' }));
 }
 
-function addClaimLabel(map, evidenceId, value) {
+function addLabel(map, evidenceId, value) {
   const text = String(value || '').trim();
   if (!text) return;
   const existing = map.get(evidenceId) || [];
@@ -91,12 +91,26 @@ async function linkedEvidence(personId) {
   const claimIds = [...new Set(claims.map((row) => row.id).filter(Boolean))];
   let evidenceIds = [];
   const claimLabels = new Map();
+  const personLabels = new Map();
+
   if (claimIds.length) {
     const { data: links, error } = await supabase.from('claim_evidence').select('claim_id,evidence_id,note').in('claim_id', claimIds);
     if (error) throw error;
     evidenceIds = (links || []).map((row) => row.evidence_id).filter(Boolean);
     const byClaim = new Map(claims.map((row) => [row.id, row.claim_label]));
-    for (const row of links || []) addClaimLabel(claimLabels, row.evidence_id, byClaim.get(row.claim_id) || row.note || 'Linked family claim');
+    for (const row of links || []) addLabel(claimLabels, row.evidence_id, byClaim.get(row.claim_id) || row.note || 'Linked family claim');
+  }
+
+  const { data: personLinks, error: personLinkError } = await supabase
+    .from('person_evidence_links')
+    .select('evidence_id,association_type,evidence_strength,note')
+    .eq('person_id', personId);
+  if (personLinkError) throw personLinkError;
+  for (const row of personLinks || []) {
+    if (!row.evidence_id) continue;
+    evidenceIds.push(row.evidence_id);
+    const association = `${label(row.association_type)}${row.evidence_strength ? ` - ${label(row.evidence_strength)}` : ''}`;
+    addLabel(personLabels, row.evidence_id, row.note || association);
   }
 
   const { data: contributions, error: contributionError } = await supabase.from('contributions').select('payload').eq('target_person_id', personId).eq('status', 'approved');
@@ -107,7 +121,12 @@ async function linkedEvidence(personId) {
   if (!ids.length) return [];
   const { data, error } = await supabase.from('evidence_items').select('id,evidence_type,title,document_date,date_text,issuing_authority,repository,storage_path,original_filename,notes,visibility,review_status,source_class').in('id', ids).eq('review_status', 'approved');
   if (error) throw error;
-  return (data || []).map((item) => ({ ...item, claim_label: (claimLabels.get(item.id) || []).join('; ') || null, kind: 'stored' }));
+  return (data || []).map((item) => ({
+    ...item,
+    claim_label: (claimLabels.get(item.id) || []).join('; ') || null,
+    association_label: (personLabels.get(item.id) || []).join('; ') || null,
+    kind: 'stored',
+  }));
 }
 
 function citationCard(item) {
@@ -117,7 +136,7 @@ function citationCard(item) {
 
 function storedCard(item, index) {
   const date = item.date_text || item.document_date || '';
-  return `<article class="person-evidence-card"><div class="person-evidence-card-head"><h4>${esc(item.title || item.original_filename || 'Family evidence')}</h4><span class="person-evidence-kind">${esc(label(item.evidence_type || item.source_class))}</span></div><p><strong>Record review:</strong> approved</p>${item.repository ? `<p><strong>Repository:</strong> ${esc(item.repository)}</p>` : ''}${date ? `<p><strong>Date:</strong> ${esc(date)}</p>` : ''}${item.claim_label ? `<p><strong>Linked claim:</strong> ${esc(item.claim_label)}</p>` : ''}${item.notes ? `<p class="person-evidence-note">${esc(item.notes)}</p>` : ''}${item.storage_path ? `<div class="person-evidence-actions"><button class="button secondary" type="button" data-stored-evidence="${index}">View private record</button></div>` : ''}</article>`;
+  return `<article class="person-evidence-card"><div class="person-evidence-card-head"><h4>${esc(item.title || item.original_filename || 'Family evidence')}</h4><span class="person-evidence-kind">${esc(label(item.evidence_type || item.source_class))}</span></div><p><strong>Record review:</strong> approved</p>${item.repository ? `<p><strong>Repository:</strong> ${esc(item.repository)}</p>` : ''}${date ? `<p><strong>Date:</strong> ${esc(date)}</p>` : ''}${item.claim_label ? `<p><strong>Linked claim:</strong> ${esc(item.claim_label)}</p>` : ''}${item.association_label ? `<p><strong>Person link:</strong> ${esc(item.association_label)}</p>` : ''}${item.notes ? `<p class="person-evidence-note">${esc(item.notes)}</p>` : ''}${item.storage_path ? `<div class="person-evidence-actions"><button class="button secondary" type="button" data-stored-evidence="${index}">View private record</button></div>` : ''}</article>`;
 }
 
 async function render(personId) {
