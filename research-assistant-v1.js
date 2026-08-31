@@ -10,7 +10,7 @@ const CLIENT_TIMEOUT_MS = 105000;
 
 function af(){return (window.GenealogyI18n?.language||document.documentElement.lang||'en')==='af';}
 function t(en,afr){return af()?afr:en;}
-function esc(value){return String(value??'').replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'})[c]);}
+function esc(value){return String(value??'').replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
 function safeUrl(value){const text=String(value||'').trim();return /^https:\/\//i.test(text)?text:null;}
 function displayName(person){return [person?.given_names?.trim(),person?.birth_surname?.trim()||person?.surname?.trim()||person?.current_surname?.trim()].filter(Boolean).join(' ');}
 function personLabels(person){return [...new Set([
