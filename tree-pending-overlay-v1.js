@@ -1,11 +1,13 @@
 const SUPABASE_HOST = 'jkakvpsiiffnidggcqzc.supabase.co';
 const SUPABASE_URL = `https://${SUPABASE_HOST}`;
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_h_0XIxzs33psSZTyKPGr8w_aJoVLw92';
+const PENDING_CACHE_TTL_MS = 5000;
 
 const originalFetch = window.fetch.bind(window);
 window.__genealogyOriginalFetch = originalFetch;
 
 let cache = { userId: null, at: 0, changes: [] };
+let pendingLookup = { userId: null, promise: null };
 
 function headerValue(input, init, name) {
   const fromInit = new Headers(init?.headers || {}).get(name);
@@ -28,24 +30,39 @@ function jwtSubject(token) {
 
 async function pendingChanges(authHeader, userId) {
   const now = Date.now();
-  if (cache.userId === userId && now - cache.at < 1200) return cache.changes;
+  if (cache.userId === userId && now - cache.at < PENDING_CACHE_TTL_MS) return cache.changes;
+  if (pendingLookup.userId === userId && pendingLookup.promise) return pendingLookup.promise;
+
   const params = new URLSearchParams({
     select: 'id,target_person_id,change_type,payload,before_snapshot,base_updated_at,status,created_at',
     submitted_by: `eq.${userId}`,
     status: 'eq.pending',
     order: 'created_at.asc',
   });
-  const response = await originalFetch(`${SUPABASE_URL}/rest/v1/tree_change_sets?${params}`, {
-    headers: {
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      Authorization: authHeader,
-      Accept: 'application/json',
-    },
-  });
-  if (!response.ok) return [];
-  const changes = await response.json();
-  cache = { userId, at: now, changes: Array.isArray(changes) ? changes : [] };
-  return cache.changes;
+
+  const lookup = (async () => {
+    try {
+      const response = await originalFetch(`${SUPABASE_URL}/rest/v1/tree_change_sets?${params}`, {
+        headers: {
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: authHeader,
+          Accept: 'application/json',
+        },
+      });
+      if (!response.ok) return cache.userId === userId ? cache.changes : [];
+      const changes = await response.json();
+      const normalized = Array.isArray(changes) ? changes : [];
+      cache = { userId, at: Date.now(), changes: normalized };
+      return normalized;
+    } finally {
+      if (pendingLookup.userId === userId && pendingLookup.promise === lookup) {
+        pendingLookup = { userId: null, promise: null };
+      }
+    }
+  })();
+
+  pendingLookup = { userId, promise: lookup };
+  return lookup;
 }
 
 function pseudoPerson(change) {
@@ -215,6 +232,7 @@ window.fetch = async function genealogyOverlayFetch(input, init) {
 
 function clearPendingCache() {
   cache = { userId: null, at: 0, changes: [] };
+  pendingLookup = { userId: null, promise: null };
 }
 
 document.addEventListener('genealogy:tree-suggestions-updated', clearPendingCache);
