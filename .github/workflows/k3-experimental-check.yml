@@ -29,13 +29,18 @@ jobs:
           launcher = Path('family-bot-launcher-v2.js').read_text()
           dialog = Path('family-bot-conversation-v2.js').read_text()
 
-          assert "import('./family-bot-launcher-v2.js?v=1')" in about
-          assert "import('./family-bot-conversation-v2.js?v=1')" in launcher
-          assert "genealogy-family-bot-v2" in dialog
+          assert "import('./family-bot-launcher-v2.js?v=2')" in about
+          assert "import('./family-bot-conversation-v2.js?v=2')" in launcher
+          assert 'attachShadow' in launcher
+          assert 'panelMount' in launcher
+          assert 'genealogy-family-bot-v2' in dialog
+          assert 'capture_contribution' in dialog
+          assert 'Share what you know' in dialog
           assert 'MutationObserver' not in launcher
           assert 'MutationObserver' not in dialog
           assert 'window.fetch =' not in launcher
           assert 'window.fetch =' not in dialog
           assert 'supabase.functions.invoke=' not in dialog.replace(' ', '')
-          print('K-3 lazy-loading and isolation checks passed.')
+          assert 'document.body.appendChild(panel)' not in dialog
+          print('K-3 lazy loading, capture flow and Shadow DOM isolation checks passed.')
           PY
