@@ -1,3 +1,4 @@
+import './access-session-v1.js?v=1';
 import { supabase } from './supabase-client-v1.js';
 
 const RELEASE_ID = '2026-08-29-map-place-pins';
