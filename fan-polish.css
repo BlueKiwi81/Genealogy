@@ -10,3 +10,33 @@
 @media(prefers-reduced-motion:reduce){.tree-canvas:empty::before{animation:none}}
 @media print{.tree-canvas:empty::before,.tree-canvas:empty::after{display:none}}
 @media(max-width:620px){.lineage-legend{gap:8px 12px}.lineage-key-item{white-space:normal;flex:1 1 44%}}
+
+/* One-shot desktop opening flourish. The centre settles first and each generation
+   then grows outward in order. Mobile layouts and reduced-motion users stay static. */
+@media (min-width:900px) and (prefers-reduced-motion:no-preference){
+  #treeCanvas>svg.fan-entrance .family-centre-disc,
+  #treeCanvas>svg.fan-entrance .family-centre-person,
+  #treeCanvas>svg.fan-entrance .family-couple-link,
+  #treeCanvas>svg.fan-entrance .family-child-node,
+  #treeCanvas>svg.fan-entrance>g.person-node:not([data-fan-level]){opacity:0;transform:scale(.92);transform-origin:600px 600px;transform-box:view-box}
+  #treeCanvas>svg.fan-entrance [data-fan-level]{opacity:0;transform:scale(.84);transform-origin:600px 600px;transform-box:view-box}
+  #treeCanvas>svg.fan-entrance.fan-entrance-run .family-centre-disc,
+  #treeCanvas>svg.fan-entrance.fan-entrance-run .family-centre-person,
+  #treeCanvas>svg.fan-entrance.fan-entrance-run .family-couple-link,
+  #treeCanvas>svg.fan-entrance.fan-entrance-run .family-child-node,
+  #treeCanvas>svg.fan-entrance.fan-entrance-run>g.person-node:not([data-fan-level]){animation:family-fan-centre-enter .38s cubic-bezier(.2,.82,.28,1) .05s forwards}
+  #treeCanvas>svg.fan-entrance.fan-entrance-run [data-fan-level]{animation:family-fan-ring-enter .52s cubic-bezier(.18,.8,.28,1) forwards}
+  #treeCanvas>svg.fan-entrance.fan-entrance-run [data-fan-level="0"]{animation-delay:.20s}
+  #treeCanvas>svg.fan-entrance.fan-entrance-run [data-fan-level="1"]{animation-delay:.34s}
+  #treeCanvas>svg.fan-entrance.fan-entrance-run [data-fan-level="2"]{animation-delay:.48s}
+  #treeCanvas>svg.fan-entrance.fan-entrance-run [data-fan-level="3"]{animation-delay:.62s}
+  #treeCanvas>svg.fan-entrance.fan-entrance-run [data-fan-level="4"]{animation-delay:.76s}
+  #treeCanvas>svg.fan-entrance.fan-entrance-run [data-fan-level="5"]{animation-delay:.90s}
+  #treeCanvas>svg.fan-entrance.fan-entrance-run [data-fan-level="6"]{animation-delay:1.04s}
+  #treeCanvas>svg.fan-entrance.fan-entrance-run [data-fan-level="7"]{animation-delay:1.18s}
+  #treeCanvas>svg.fan-entrance.fan-entrance-run [data-fan-level="8"]{animation-delay:1.32s}
+  #treeCanvas>svg.fan-entrance.fan-entrance-run [data-fan-level="9"]{animation-delay:1.46s}
+  @keyframes family-fan-centre-enter{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+  @keyframes family-fan-ring-enter{0%{opacity:0;transform:scale(.84)}58%{opacity:.92}100%{opacity:1;transform:scale(1)}}
+}
+@media print{#treeCanvas>svg.fan-entrance *,#treeCanvas>svg.fan-entrance.fan-entrance-run *{animation:none!important;opacity:1!important;transform:none!important}}
