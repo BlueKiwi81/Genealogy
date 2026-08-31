@@ -87,8 +87,9 @@ jobs:
           # code only. Family-specific Story content remains in Supabase behind the
           # same approved-member RLS boundary as the rest of the archive.
           node --check preview/preview-shell.js
+          node --check preview/family-group-v1.js
           mkdir -p _site/preview
-          cp preview/index.html preview/preview.css preview/preview-shell.js _site/preview/
+          cp preview/index.html preview/preview.css preview/preview-shell.js preview/family-group-v1.js preview/family-group-v1.css _site/preview/
 
           # Controlled trial: the source renderer retains its conservative six-ring
           # development cap, while the published family site may render up to ten
