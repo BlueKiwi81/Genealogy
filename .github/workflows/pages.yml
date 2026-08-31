@@ -96,7 +96,7 @@ jobs:
           from pathlib import Path
           index = Path('_site/preview/index.html')
           text = index.read_text(encoding='utf-8')
-          marker = '<link rel="stylesheet" href="./preview.css?v=1" />'
+          marker = '<link rel="stylesheet" href="./preview.css?v=3" />'
           if marker not in text:
               raise SystemExit('Preview stylesheet marker missing.')
           text = text.replace(marker, marker + '\n  <link rel="stylesheet" href="./preview-hotfix-v1.css?v=1" />', 1)
@@ -146,7 +146,7 @@ jobs:
           text, en_changed = re.subn(r'targeted [A-Z][A-Za-z-]+ research', 'targeted local research', text, count=1)
           text, af_changed = re.subn(r'geteikende [A-Z][A-Za-z-]+-navorsing', 'geteikende plaaslike navorsing', text, count=1)
           if en_changed != 1 or af_changed != 1:
-            raise SystemExit('Expected local research examples were not found exactly once in each language.')
+              raise SystemExit('Expected local research examples were not found exactly once in each language.')
           research.write_text(text, encoding='utf-8')
           PY
 
