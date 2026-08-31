@@ -98,7 +98,7 @@ function hideLauncher() {
   if (host) host.hidden = true;
 }
 
-document.addEventListener('genealogy:archive-ready', installLauncher, { once: true });
+document.addEventListener('genealogy:archive-ready', installLauncher);
 document.addEventListener('genealogy:language-changed', () => {
   const host = document.getElementById(HOST_ID);
   if (host?.shadowRoot) updateCopy(host.shadowRoot);
