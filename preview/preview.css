@@ -2,6 +2,16 @@
 .preview-topbar{gap:18px;align-items:center;}
 .preview-live-link{text-decoration:none;}
 .preview-app-page #editorArea{display:none!important;}
+.preview-app-page #treePerspectiveSwitch{display:none!important;}
+.preview-app-page .tree-panel.snapshot-active #collateralSiblingDrawer,
+.preview-app-page .tree-panel.snapshot-active #collateralSiblingCard{display:none!important;}
+.preview-app-page .tree-panel.snapshot-active .snapshot-waist .snapshot-siblings-wrap{display:none!important;}
+.preview-app-page .tree-panel.snapshot-active .snapshot-waist .family-group-cluster:not(.is-focus){display:none!important;}
+.preview-app-page .tree-panel.snapshot-active .snapshot-waist .family-group-cluster.is-focus .family-group-stem,
+.preview-app-page .tree-panel.snapshot-active .snapshot-waist .family-group-cluster.is-focus .family-group-children,
+.preview-app-page .tree-panel.snapshot-active .snapshot-waist .family-group-note{display:none!important;}
+.preview-app-page .tree-panel.snapshot-active .snapshot-waist-row,
+.preview-app-page .tree-panel.snapshot-active .family-group-row{justify-content:center!important;}
 .preview-primary-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:18px;padding:8px;position:sticky;top:8px;z-index:24;box-shadow:0 8px 24px rgba(47,37,28,.08);}
 .preview-primary-tab{border:0;border-radius:12px;background:transparent;color:var(--preview-ink);padding:11px 14px;text-align:left;cursor:pointer;display:grid;gap:2px;transition:background .16s ease,transform .16s ease;}
 .preview-primary-tab:hover,.preview-primary-tab:focus-visible{background:var(--preview-wash);outline:none;}
