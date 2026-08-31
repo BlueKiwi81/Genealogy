@@ -1,5 +1,6 @@
 import './person-photos-v1.js';
 import './fan-entrance-v1.js?v=3';
+import './fan-era-scaffold-v1.js?v=1';
 
 const treeCanvas = document.getElementById('treeCanvas');
 const treePanel = document.querySelector('.tree-panel');
@@ -45,10 +46,10 @@ function familyLegendItems(svg) {
   const paternal = af() ? 'vaderlike lyn' : 'paternal line';
   const maternal = af() ? 'moederlike lyn' : 'maternal line';
   return [
-    { colour: palette[0], label: `${centreName} – ${paternal}` },
-    { colour: palette[1], label: `${centreName} – ${maternal}` },
-    { colour: palette[2], label: `${partnerName} – ${paternal}` },
-    { colour: palette[3], label: `${partnerName} – ${maternal}` },
+    { colour: palette[0], label: `${centreName} - ${paternal}` },
+    { colour: palette[1], label: `${centreName} - ${maternal}` },
+    { colour: palette[2], label: `${partnerName} - ${paternal}` },
+    { colour: palette[3], label: `${partnerName} - ${maternal}` },
   ];
 }
 
