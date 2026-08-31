@@ -155,6 +155,24 @@ function eraText(year, level, maxLevel, knownCount) {
   return `c. ${centre - 25}-${centre + 25}`;
 }
 
+function eraLevelsToShow(minimumLevel, maxLevel, depth) {
+  const available = [];
+  for (let level = minimumLevel; level <= maxLevel; level += 1) available.push(level);
+  if (available.length <= 1) return available;
+
+  // The scaffold is orientation, not a second data layer. At deep views the
+  // rings become narrow, so showing every generation creates visual noise.
+  const cap = depth >= 9 ? 4 : depth >= 7 ? 5 : available.length;
+  if (available.length <= cap) return available;
+
+  const selected = new Set();
+  for (let index = 0; index < cap; index += 1) {
+    const position = Math.round(index * (available.length - 1) / (cap - 1));
+    selected.add(available[position]);
+  }
+  return [...selected].sort((a, b) => a - b);
+}
+
 function restoreHiddenQuestions(svg) {
   svg.querySelectorAll('[data-era-hidden-question="true"]').forEach((text) => {
     const previous = text.getAttribute('data-era-previous-opacity');
@@ -181,24 +199,31 @@ function hideQuestionsUnderLabel(rows, startAngle, endAngle) {
   });
 }
 
-function addEraLabel(overlay, value, radius, startAngle, endAngle, level, maxLevel) {
+function addEraLabel(overlay, value, radius, startAngle, endAngle, level, maxLevel, ringThickness) {
   const span = endAngle - startAngle;
   const arcLength = radius * (span * Math.PI / 180);
   const desired = Math.min(44, 20 + level * 4.6);
   const fit = arcLength / Math.max(1, value.length * .62);
-  const fontSize = Math.min(desired, fit);
+  const ringCap = Math.max(13, ringThickness * .54);
+  const fontSize = Math.min(desired, fit, ringCap);
   if (fontSize < 13) return false;
 
+  // SVG text follows an alphabetic baseline. If that baseline sits exactly on
+  // the mathematical centre radius, the visible letterforms look slightly
+  // biased toward the outside of the ring. Pull the guide inward by a small
+  // optical amount so the actual lettering sits in the middle of the band.
+  const opticalInset = Math.min(fontSize * .24, ringThickness * .15);
+  const textRadius = Math.max(1, radius - opticalInset);
   const mid = (startAngle + endAngle) / 2;
   const reverse = (mid % 360) > 90 && (mid % 360) < 270;
   const from = reverse ? endAngle : startAngle;
   const to = reverse ? startAngle : endAngle;
-  const [x1, y1] = polar(radius, from);
-  const [x2, y2] = polar(radius, to);
+  const [x1, y1] = polar(textRadius, from);
+  const [x2, y2] = polar(textRadius, to);
   const pathId = `fan-era-path-${level}-${Math.round(startAngle * 10)}-${Math.round(endAngle * 10)}`;
   const path = document.createElementNS(SVG_NS, 'path');
   path.setAttribute('id', pathId);
-  path.setAttribute('d', `M ${x1} ${y1} A ${radius} ${radius} 0 0 ${reverse ? 0 : 1} ${x2} ${y2}`);
+  path.setAttribute('d', `M ${x1} ${y1} A ${textRadius} ${textRadius} 0 0 ${reverse ? 0 : 1} ${x2} ${y2}`);
   path.setAttribute('fill', 'none');
   path.setAttribute('stroke', 'none');
   overlay.appendChild(path);
@@ -258,15 +283,16 @@ function applyEraScaffold() {
   overlay.setAttribute('pointer-events', 'none');
 
   const minimumLevel = maxLevel >= 3 ? 2 : 1;
-  for (let level = minimumLevel; level <= maxLevel; level += 1) {
+  const displayLevels = eraLevelsToShow(minimumLevel, maxLevel, depth);
+  displayLevels.forEach((level) => {
     const rows = levels.get(level) || [];
-    if (!rows.length) continue;
+    if (!rows.length) return;
     const run = chooseRun(openRuns(rows), rows.length, level);
-    if (!run) continue;
+    if (!run) return;
 
     const year = estimatedYear(level, yearMedians, maxLevel);
     const label = eraText(year, level, maxLevel, (yearsByLevel.get(level) || []).length);
-    if (!label) continue;
+    if (!label) return;
 
     const target = run.target.angle;
     const preferredStart = run.overlap > 0 ? Math.max(run.start, target - 42) : run.start;
@@ -275,7 +301,7 @@ function applyEraScaffold() {
     const availableEnd = run.overlap > 0 && preferredEnd - preferredStart >= 18 ? preferredEnd : run.end;
     const availableSpan = availableEnd - availableStart;
     const pathSpan = Math.min(84, Math.max(20, availableSpan - 4));
-    if (pathSpan > availableSpan) continue;
+    if (pathSpan > availableSpan) return;
 
     let centre = run.overlap > 0 ? target : (availableStart + availableEnd) / 2;
     centre = Math.max(availableStart + pathSpan / 2, Math.min(availableEnd - pathSpan / 2, centre));
@@ -283,10 +309,10 @@ function applyEraScaffold() {
     const endAngle = centre + pathSpan / 2;
     const radius = innerRadius + level * (thickness + RING_GAP) + thickness / 2;
 
-    if (addEraLabel(overlay, label, radius, startAngle, endAngle, level, maxLevel)) {
+    if (addEraLabel(overlay, label, radius, startAngle, endAngle, level, maxLevel, thickness)) {
       hideQuestionsUnderLabel(rows, startAngle, endAngle);
     }
-  }
+  });
 
   if (overlay.childNodes.length) {
     svg.appendChild(overlay);
