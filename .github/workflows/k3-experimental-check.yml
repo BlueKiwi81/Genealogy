@@ -36,11 +36,13 @@ jobs:
           assert 'genealogy-family-bot-v2' in dialog
           assert 'capture_contribution' in dialog
           assert 'Share what you know' in dialog
+          assert 'privacy_limited' in dialog
+          assert 'Add to contribution form' in dialog
           assert 'MutationObserver' not in launcher
           assert 'MutationObserver' not in dialog
           assert 'window.fetch =' not in launcher
           assert 'window.fetch =' not in dialog
           assert 'supabase.functions.invoke=' not in dialog.replace(' ', '')
           assert 'document.body.appendChild(panel)' not in dialog
-          print('K-3 lazy loading, capture flow and Shadow DOM isolation checks passed.')
+          print('K-3 lazy loading, contribution flow, privacy handoff and Shadow DOM isolation checks passed.')
           PY
