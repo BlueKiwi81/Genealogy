@@ -1,5 +1,6 @@
 const APP = document.getElementById('appArea');
 const HOST_ID = 'familyBotV2Host';
+const K3_TEST_ENABLED = new URLSearchParams(window.location.search).get('k3') === '1';
 let loading = false;
 
 function af() {
@@ -68,7 +69,7 @@ async function openBot(host, root) {
 }
 
 function installLauncher() {
-  if (!APP || APP.classList.contains('hidden')) return;
+  if (!K3_TEST_ENABLED || !APP || APP.classList.contains('hidden')) return;
   const existing = document.getElementById(HOST_ID);
   if (existing) {
     existing.hidden = false;
@@ -98,12 +99,14 @@ function hideLauncher() {
   if (host) host.hidden = true;
 }
 
-document.addEventListener('genealogy:archive-ready', installLauncher);
-document.addEventListener('genealogy:language-changed', () => {
-  const host = document.getElementById(HOST_ID);
-  if (host?.shadowRoot) updateCopy(host.shadowRoot);
-});
-document.getElementById('signOut')?.addEventListener('click', hideLauncher);
-window.addEventListener('load', () => window.setTimeout(installLauncher, 700));
-window.setTimeout(installLauncher, 1400);
-if (APP && !APP.classList.contains('hidden')) installLauncher();
+if (K3_TEST_ENABLED) {
+  document.addEventListener('genealogy:archive-ready', installLauncher);
+  document.addEventListener('genealogy:language-changed', () => {
+    const host = document.getElementById(HOST_ID);
+    if (host?.shadowRoot) updateCopy(host.shadowRoot);
+  });
+  document.getElementById('signOut')?.addEventListener('click', hideLauncher);
+  window.addEventListener('load', () => window.setTimeout(installLauncher, 700));
+  window.setTimeout(installLauncher, 1400);
+  if (APP && !APP.classList.contains('hidden')) installLauncher();
+}
