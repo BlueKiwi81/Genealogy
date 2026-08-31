@@ -12,6 +12,9 @@ let activeAnimations = [];
 let deferredTimers = [];
 let observedSvg = null;
 let visibilityObserver = null;
+let eraReadyHandler = null;
+let growthStartedAt = 0;
+let activeGrowthSchedule = null;
 
 function currentFanSvg() {
   const svg = canvas?.querySelector(':scope > svg');
@@ -28,7 +31,8 @@ function ensurePreparationStyle() {
     #treeCanvas > svg.fan-growth-prepared .family-centre-person,
     #treeCanvas > svg.fan-growth-prepared .family-couple-link,
     #treeCanvas > svg.fan-growth-prepared .family-child-node,
-    #treeCanvas > svg.fan-growth-prepared > g.person-node:not([data-fan-level]) {
+    #treeCanvas > svg.fan-growth-prepared > g.person-node:not([data-fan-level]),
+    #treeCanvas > svg.fan-growth-prepared .fan-era-scaffold .fan-era-label {
       opacity: 0;
     }
     #treeCanvas > svg.fan-growth-prepared [data-fan-level] {
@@ -189,7 +193,60 @@ function revealDeferredEmptyLevels(schedule, individualKeys, after) {
   return finish;
 }
 
+function median(values) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function eraLabelTargetStart(label, schedule) {
+  const level = Number(label.dataset.eraLevel);
+  const startAngle = Number(label.dataset.eraStartAngle);
+  const endAngle = Number(label.dataset.eraEndAngle);
+  if (!Number.isFinite(level)) return 0;
+
+  const levelItems = [...schedule.values()].filter((item) => item.level === level);
+  if (!levelItems.length) return 0;
+  const count = levelItems.length;
+  const withinArc = levelItems.filter((item) => {
+    let centre = (item.slot + .5) * 360 / count;
+    if (endAngle > 360 && centre < startAngle) centre += 360;
+    return Number.isFinite(startAngle) && Number.isFinite(endAngle)
+      ? centre >= startAngle && centre <= endAngle
+      : true;
+  });
+  const relevant = withinArc.length ? withinArc : levelItems;
+  return median(relevant.map((item) => item.start + item.duration * .55));
+}
+
+function animateEraLabels(svg, schedule) {
+  if (!svg || !schedule || reducedMotion.matches) return;
+  const elapsed = growthStartedAt ? performance.now() - growthStartedAt : 0;
+  svg.querySelectorAll('.fan-era-scaffold .fan-era-label').forEach((label) => {
+    if (label.dataset.eraGrowthAnimated === 'true') return;
+    label.dataset.eraGrowthAnimated = 'true';
+    const targetStart = eraLabelTargetStart(label, schedule);
+    const delay = Math.max(0, targetStart - elapsed);
+    const animation = label.animate([
+      { opacity: 0 },
+      { opacity: 0.18, offset: 0.35 },
+      { opacity: 1 },
+    ], {
+      duration: 430,
+      delay,
+      easing: 'cubic-bezier(.2,.72,.25,1)',
+      fill: 'both',
+    });
+    activeAnimations.push(animation);
+  });
+}
+
 function cleanupGrowth(svg) {
+  if (eraReadyHandler) {
+    svg?.removeEventListener('genealogy:fan-era-scaffold-ready', eraReadyHandler);
+    eraReadyHandler = null;
+  }
   svg?.classList.remove('fan-growth-prepared');
   activeAnimations.forEach((animation) => animation.cancel());
   activeAnimations = [];
@@ -202,6 +259,8 @@ function cleanupGrowth(svg) {
       node.style.removeProperty('transform-box');
       node.style.removeProperty('transform-origin');
     });
+  activeGrowthSchedule = null;
+  growthStartedAt = 0;
 }
 
 function playEntrance(svg) {
@@ -212,11 +271,17 @@ function playEntrance(svg) {
 
   const { cells, schedule } = buildGrowthSchedule(svg);
   const individualKeys = keysToAnimateIndividually(cells, schedule);
+  activeGrowthSchedule = schedule;
+  growthStartedAt = performance.now();
+
+  eraReadyHandler = () => animateEraLabels(svg, activeGrowthSchedule);
+  svg.addEventListener('genealogy:fan-era-scaffold-ready', eraReadyHandler);
 
   requestAnimationFrame(() => {
     animateCentre(svg);
     const individualFinish = animateCellsIndividually(schedule, individualKeys);
     const allFinish = revealDeferredEmptyLevels(schedule, individualKeys, individualFinish);
+    animateEraLabels(svg, schedule);
     cleanupTimer = window.setTimeout(() => {
       cleanupGrowth(svg);
       cleanupTimer = null;
@@ -255,6 +320,7 @@ if (canvas) {
 
 window.addEventListener('pagehide', () => {
   visibilityObserver?.disconnect();
+  if (eraReadyHandler) observedSvg?.removeEventListener('genealogy:fan-era-scaffold-ready', eraReadyHandler);
   window.clearTimeout(cleanupTimer);
   deferredTimers.forEach((timer) => window.clearTimeout(timer));
   activeAnimations.forEach((animation) => animation.cancel());
