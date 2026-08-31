@@ -10,7 +10,7 @@ const CLIENT_TIMEOUT_MS = 105000;
 
 function af(){return (window.GenealogyI18n?.language||document.documentElement.lang||'en')==='af';}
 function t(en,afr){return af()?afr:en;}
-function esc(value){return String(value??'').replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+function esc(value){return String(value??'').replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'})[c]);}
 function safeUrl(value){const text=String(value||'').trim();return /^https:\/\//i.test(text)?text:null;}
 function displayName(person){return [person?.given_names?.trim(),person?.birth_surname?.trim()||person?.surname?.trim()||person?.current_surname?.trim()].filter(Boolean).join(' ');}
 function personLabels(person){return [...new Set([
@@ -19,7 +19,7 @@ function personLabels(person){return [...new Set([
   [person?.given_names?.trim(),person?.current_surname?.trim()].filter(Boolean).join(' '),
   [person?.preferred_name?.trim(),person?.current_surname?.trim()].filter(Boolean).join(' '),
 ].filter(Boolean))];}
-function possiblyLiving(person){const status=String(person?.life_status||'').toLowerCase();if(['alive','living'].includes(status))return true;if(['dead','deceased'].includes(status)||person?.death_date)return false;const birthYear=Number(String(person?.birth_date||'').slice(0,4));return !Number.isFinite(birthYear)||birthYear>=new Date().getFullYear()-110;}
+function explicitlyLiving(person){const status=String(person?.life_status||'').toLowerCase();return ['alive','living'].includes(status);}
 
 function installStyles(){
   if(document.getElementById('researchAssistantStyles'))return;
@@ -120,7 +120,7 @@ async function runResearch(event){
   if(!personId)return setStatus(t('Select a person in the family fan first.','Kies eers ’n persoon in die familiewaaier.'),'error');
   const target=(await people()).find(person=>person.id===personId);
   const targetName=target?displayName(target):selectedPersonLabel();
-  if(possiblyLiving(target))return setStatus(t('The AI research assistant is disabled when a person is living or the record does not establish that they are deceased. You can still add family-supplied information through the ordinary contribution form.','Die KI-navorsingsassistent is afgeskakel wanneer iemand leef of die rekord nie aantoon dat die persoon oorlede is nie. Jy kan steeds familie-inligting deur die gewone bydraevorm byvoeg.'),'error');
+  if(explicitlyLiving(target))return setStatus(t('The AI research assistant is disabled for people recorded as living. Historical records with incomplete death data are checked by the archive before any search starts.','Die KI-navorsingsassistent is afgeskakel vir persone wat as lewend aangeteken is. Historiese rekords met onvolledige sterfdata word deur die argief nagegaan voordat enige soektog begin.'),'error');
   if(!window.confirm(t(`Start paid archive research for ${targetName}? Results will remain research leads until reviewed.`,`Begin betaalde argiefnavorsing vir ${targetName}? Resultate bly navorsingsleidrade totdat dit hersien is.`)))return;
   const question=document.getElementById('researchAssistantQuestion')?.value.trim()||'';
   const button=document.getElementById('researchAssistantRun');
