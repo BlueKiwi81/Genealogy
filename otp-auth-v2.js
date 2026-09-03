@@ -1,3 +1,4 @@
+import './family-viewer-access-bridge-v1.js';
 import './family-viewer-access-v1.js';
 import { supabase } from './supabase-client-v1.js';
 
