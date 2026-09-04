@@ -1,7 +1,7 @@
-import './editor-tree-selective-core-v2.js?v=20260905-8';
+import './editor-tree-selective-core-v3.js?v=20260905-9';
 import './editor-tree-suggestions-v1.js?v=4';
 
-const BUILD = '2026-09-05.8';
+const BUILD = '2026-09-05.9';
 function markBuild() {
   const heading = document.querySelector('.tree-change-review-heading .small');
   if (!heading) return false;
