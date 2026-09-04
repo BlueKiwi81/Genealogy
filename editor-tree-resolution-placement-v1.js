@@ -1,4 +1,5 @@
 import './fan-cell-action-dedupe-v1.js?v=1';
+import './editor-tree-selective-approval-v1.js';
 
 function placeResolutionAssistants() {
   document.querySelectorAll('.tree-ai-review .tree-ai-resolution-assistant').forEach((host) => {
