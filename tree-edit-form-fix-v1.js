@@ -1,4 +1,5 @@
 import { supabase } from './supabase-client-v1.js';
+import './relationship-change-safety-v1.js';
 
 const SUPABASE_URL = 'https://jkakvpsiiffnidggcqzc.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_h_0XIxzs33psSZTyKPGr8w_aJoVLw92';
