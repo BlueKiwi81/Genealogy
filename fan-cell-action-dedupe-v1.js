@@ -23,3 +23,21 @@ const observer = new MutationObserver(() => {
   dedupeFanActionPopups();
 });
 observer.observe(document.body, { childList: true, subtree: true });
+
+// Compatibility bridge for the older upload/research modules. Those modules
+// still switch the hidden contributionType select to "source", while the
+// current contribution workflow validates the visible contributionCategory
+// checkboxes. Ensure a legacy source hand-off also selects the new Source chip.
+const legacyContributionType = document.getElementById('contributionType');
+
+function syncLegacySourceCategory() {
+  if (legacyContributionType?.value !== 'source') return;
+  const sourceCategory = document.querySelector('input[name="contributionCategory"][value="source"]');
+  if (!sourceCategory || sourceCategory.checked) return;
+  sourceCategory.checked = true;
+  sourceCategory.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+legacyContributionType?.addEventListener('change', syncLegacySourceCategory);
+// Also cover a source mode selected before this late compatibility module loaded.
+syncLegacySourceCategory();
