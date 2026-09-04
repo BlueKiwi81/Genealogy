@@ -1,4 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/+esm';
+import './selective-tree-approval-v1.js';
 
 const SUPABASE_URL = 'https://jkakvpsiiffnidggcqzc.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_h_0XIxzs33psSZTyKPGr8w_aJoVLw92';
@@ -185,6 +186,11 @@ async function requestReview(kind, id, button, refresh = false) {
     if (currentReviewKey() !== key) return;
     currentReview = result.review;
     renderReview(currentReview, '', kind);
+    if (kind === 'tree_change') {
+      document.dispatchEvent(new CustomEvent('genealogy:tree-intelligent-review-rendered', {
+        detail: { changeSetId: id, review: currentReview },
+      }));
+    }
     setReviewButtonState(button, kind, currentReview?.decision === 'approve' ? 'ready' : 'manual', currentReview?.decision);
   } catch (error) {
     if (currentReviewKey() !== key) return;
