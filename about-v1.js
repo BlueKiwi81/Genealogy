@@ -1,5 +1,5 @@
-const APP_VERSION = '1.2.1';
-const UPDATED_AT = '30 August 2026 at 8:02 am NZST';
+const APP_VERSION = '1.3.0';
+const UPDATED_AT = '5 September 2026';
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
