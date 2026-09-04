@@ -1,4 +1,4 @@
-import './editor-tree-selective-core-v1.js?v=20260905-8';
+import './editor-tree-selective-core-v2.js?v=20260905-8';
 import './editor-tree-suggestions-v1.js?v=4';
 
 const BUILD = '2026-09-05.8';
@@ -15,8 +15,9 @@ function markBuild() {
 }
 
 if (!markBuild()) {
-  const observer = new MutationObserver(() => {
-    if (markBuild()) observer.disconnect();
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
+  let attempts = 0;
+  const timer = setInterval(() => {
+    attempts += 1;
+    if (markBuild() || attempts >= 40) clearInterval(timer);
+  }, 250);
 }
