@@ -1,7 +1,7 @@
 import './editor-tree-selective-core-v3.js?v=20260905-10';
 
-const APP_VERSION = '1.3.2';
-const UPDATED_AT = '5 September 2026';
+const APP_VERSION = '1.4.0';
+const UPDATED_AT = '12 September 2026';
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
