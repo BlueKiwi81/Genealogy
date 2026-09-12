@@ -1,5 +1,3 @@
-import './tree-evidence-key-placement-v1.js?v=1';
-
 let arrangeTimer = null;
 
 function lang() { return window.GenealogyI18n?.language || document.documentElement.lang || 'en'; }
@@ -15,6 +13,28 @@ function ensureBelowTreeTools(workspace) {
   }
   if (workspace.nextElementSibling !== region) workspace.insertAdjacentElement('afterend', region);
   return region;
+}
+
+function installEvidenceKeyStyles() {
+  if (document.getElementById('treeEvidenceKeyPlacementStyles')) return;
+  const style = document.createElement('style');
+  style.id = 'treeEvidenceKeyPlacementStyles';
+  style.textContent = `
+    #treeEvidenceKey.tree-key-wide{padding:12px 16px;margin:0}
+    #treeEvidenceKey.tree-key-wide .eyebrow{margin-bottom:2px}
+    #treeEvidenceKey.tree-key-wide h2{font-size:1rem;margin:0 0 3px}
+    #treeEvidenceKey.tree-key-wide .tree-key-intro{margin:0 0 9px;font-size:11px}
+    #treeEvidenceKey.tree-key-wide .tree-key-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px 16px}
+    #treeEvidenceKey.tree-key-wide .tree-key-row{grid-template-columns:48px 1fr;gap:8px;font-size:11px;line-height:1.26}
+    #treeEvidenceKey.tree-key-wide .tree-key-row strong{font-size:11px}
+    #treeEvidenceKey.tree-key-wide .tree-key-swatch{width:44px;height:15px}
+    #treeEvidenceKey.tree-key-wide .tree-key-frontier i{width:13px;height:15px}
+    #treeEvidenceKey.tree-key-wide .tree-key-question{width:19px;height:19px;font-size:11px}
+    #treeEvidenceKey.tree-key-wide .tree-key-note{margin-top:8px;padding-top:7px;font-size:10px}
+    @media(max-width:980px){#treeEvidenceKey.tree-key-wide .tree-key-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:640px){#treeEvidenceKey.tree-key-wide .tree-key-grid{grid-template-columns:1fr}#treeEvidenceKey.tree-key-wide{padding:12px 14px}}
+  `;
+  document.head.appendChild(style);
 }
 
 function makeCalendarCompact(panel) {
@@ -140,6 +160,30 @@ function syncCopy() {
   if (link) link.textContent = copy('Add information', 'Voeg inligting by');
 }
 
+function placeBelowTreeItems(region, key, contribution, calendar) {
+  if (key) {
+    installEvidenceKeyStyles();
+    key.classList.add('tree-key-wide');
+    if (key.parentElement !== region) region.prepend(key);
+    else if (region.firstElementChild !== key) region.prepend(key);
+  }
+
+  if (contribution) {
+    if (contribution.parentElement !== region) region.appendChild(contribution);
+    const targetPrevious = key || null;
+    if (targetPrevious) {
+      if (targetPrevious.nextElementSibling !== contribution) targetPrevious.insertAdjacentElement('afterend', contribution);
+    } else if (region.firstElementChild !== contribution) {
+      region.prepend(contribution);
+    }
+  }
+
+  if (calendar) {
+    if (calendar.parentElement !== region) region.appendChild(calendar);
+    if (contribution && contribution.nextElementSibling !== calendar) contribution.insertAdjacentElement('afterend', calendar);
+  }
+}
+
 function arrangeWorkspace() {
   arrangeTimer = null;
   const appArea = document.getElementById('appArea');
@@ -152,6 +196,7 @@ function arrangeWorkspace() {
   bindPersonPanel(personPanel);
 
   const region = ensureBelowTreeTools(workspace);
+  const key = document.getElementById('treeEvidenceKey');
   const contributionPanel = document.getElementById('contributionForm')?.closest('section');
   const contribution = ensureContributionWorkbench(contributionPanel, region);
 
@@ -159,14 +204,16 @@ function arrangeWorkspace() {
   if (birthdayPanel) makeCalendarCompact(birthdayPanel);
   const calendar = ensureCalendarWorkbench(birthdayPanel, region);
 
-  if (contribution && region.firstElementChild !== contribution) region.prepend(contribution);
-  if (calendar && contribution && contribution.nextElementSibling !== calendar) contribution.insertAdjacentElement('afterend', calendar);
+  placeBelowTreeItems(region, key, contribution, calendar);
 
-  // The right-hand column belongs to the selected person only. Dynamic family tools
-  // are always moved into the full-width tool region below the fan.
+  // The right-hand column belongs to the selected person only.
   if (sideColumn) {
     [...sideColumn.children].forEach((child) => {
       if (child === personPanel) return;
+      if (child === key) {
+        region.prepend(child);
+        return;
+      }
       if (child.id === 'birthdayCalendarPanel') {
         const body = document.querySelector('#birthdayCalendarWorkbench .birthday-calendar-workbench-body');
         if (body) body.appendChild(child);
@@ -174,17 +221,19 @@ function arrangeWorkspace() {
     });
   }
 
+  placeBelowTreeItems(region, key, contribution, calendar);
   installContributionLink();
   syncCopy();
 }
 
 function scheduleArrange() {
   window.clearTimeout(arrangeTimer);
-  arrangeTimer = window.setTimeout(arrangeWorkspace, 30);
+  arrangeTimer = window.setTimeout(arrangeWorkspace, 80);
 }
 
 const observer = new MutationObserver(scheduleArrange);
 observer.observe(document.body, { childList: true, subtree: true });
-document.addEventListener('genealogy:language-changed', () => { scheduleArrange(); window.setTimeout(syncCopy, 40); });
+document.addEventListener('genealogy:archive-ready', scheduleArrange);
+document.addEventListener('genealogy:language-changed', () => { scheduleArrange(); window.setTimeout(syncCopy, 80); });
 window.addEventListener('load', scheduleArrange);
 scheduleArrange();
