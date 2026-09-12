@@ -1,3 +1,5 @@
+import './tree-evidence-key-placement-v1.js?v=1';
+
 let arrangeTimer = null;
 
 function lang() { return window.GenealogyI18n?.language || document.documentElement.lang || 'en'; }
