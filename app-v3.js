@@ -4,7 +4,8 @@ import { ancestryName, birthSurname, currentSurname, recordName } from './person
 
 const REGISTRATION_KEY = 'genealogyRegistrationDraft';
 const FRONTIER_KEY = 'genealogyShowResearchFrontier';
-const RENDER_DEPTH_CAP = 6;
+const RENDER_DEPTH_CAP = 7;
+const PROVISIONAL_LAYER_LIMIT = 3;
 const LOAD_TIMEOUT_MS = 18000;
 const SOURCE_RANK = { documented: 6, strong: 5, family_supplied: 4, probable: 3, hypothesis: 2, unresolved: 1 };
 const PALETTE = ['#e7bea0', '#b8d5de', '#cbd6a6', '#d2c2df'];
@@ -43,6 +44,7 @@ const state = {
   people: [],
   relationships: [],
   frontier: [],
+  frontierCascade: [],
   peopleById: new Map(),
   parentEdgesByChild: new Map(),
   childIdsByParent: new Map(),
@@ -353,14 +355,16 @@ async function loadFamilyData(force = false) {
       supabase.from('people').select('id,slug,given_names,preferred_name,preferred_name_status,surname,birth_surname,current_surname,gender,birth_date,death_date,birth_place,death_place,occupation_summary,narrative_summary,source_status,is_active').order('surname').order('given_names'),
       supabase.from('relationships').select('*'),
       supabase.from('research_frontier_candidates').select('id,anchor_person_id,parent_slot,label,year_text,detail,evidence_note,priority,is_active').eq('is_active', true).order('priority'),
+      supabase.from('research_frontier_cascade_candidates').select('id,root_candidate_id,parent_node_id,parent_slot,label,year_text,detail,evidence_note,priority,is_active').eq('is_active', true).order('priority'),
     ]);
-    const [peopleResult, relationshipsResult, frontierResult] = await withTimeout(requests, 'Family archive');
+    const [peopleResult, relationshipsResult, frontierResult, cascadeResult] = await withTimeout(requests, 'Family archive');
     if (peopleResult.error) throw peopleResult.error;
     if (relationshipsResult.error) throw relationshipsResult.error;
 
     state.people = (peopleResult.data || []).filter((item) => item.is_active !== false);
     state.relationships = (relationshipsResult.data || []).filter((item) => item.is_active !== false);
     state.frontier = frontierResult.error ? [] : (frontierResult.data || []);
+    state.frontierCascade = cascadeResult.error ? [] : (cascadeResult.data || []);
     state.loaded = true;
     rebuildIndexes();
   })();
@@ -433,6 +437,16 @@ function populateCentreSelect() {
   if (state.centreId) ui.centreSelect.value = state.centreId;
 }
 
+function provisionalLayerCount(rootCandidateId) {
+  const layer2 = state.frontierCascade.filter((node) => node.is_active !== false
+    && node.root_candidate_id === rootCandidateId && !node.parent_node_id);
+  if (!layer2.length) return 1;
+  const layer2Ids = new Set(layer2.map((node) => node.id));
+  const hasLayer3 = state.frontierCascade.some((node) => node.is_active !== false
+    && node.root_candidate_id === rootCandidateId && layer2Ids.has(node.parent_node_id));
+  return hasLayer3 ? PROVISIONAL_LAYER_LIMIT : 2;
+}
+
 function researchDepth(roots) {
   let max = 1;
   const depthById = new Map();
@@ -448,7 +462,9 @@ function researchDepth(roots) {
   state.frontier.forEach((candidate) => {
     if (candidate.is_active === false) return;
     const depth = depthById.get(candidate.anchor_person_id);
-    if (depth !== undefined) max = Math.max(max, depth + 2);
+    if (depth !== undefined) {
+      max = Math.max(max, depth + 1 + provisionalLayerCount(candidate.id));
+    }
   });
   return max;
 }
@@ -499,23 +515,78 @@ function frontierMap(a, b, levels, depth) {
     list.push(position);
     positions.set(id, list);
   };
+  const addFrontierItem = (level, slot, candidate) => {
+    if (level < 0 || level >= depth) return;
+    if (levels[level]?.[slot]?.person) return;
+    const key = `${level}:${slot}`;
+    const list = output.get(key) || [];
+    list.push(candidate);
+    output.set(key, list);
+  };
+  const positionFromKey = (key) => {
+    const [level, slot] = key.split(':').map(Number);
+    return { level, slot };
+  };
+
   addPosition(a.id, { level: -1, base: 0 });
   if (b) addPosition(b.id, { level: -1, base: 2 });
   levels.forEach((entries, level) => entries.forEach((entry, slot) => {
     if (entry?.person) addPosition(entry.person.id, { level, slot });
   }));
+
   state.frontier.forEach((candidate) => {
     if (candidate.is_active === false) return;
     const side = candidate.parent_slot === 'mother' ? 1 : 0;
     (positions.get(candidate.anchor_person_id) || []).forEach((position) => {
       const level = position.level + 1;
-      if (level < 0 || level >= depth) return;
       const slot = position.level === -1 ? position.base + side : position.slot * 2 + side;
-      if (levels[level]?.[slot]?.person) return;
-      const key = `${level}:${slot}`;
-      const list = output.get(key) || [];
-      list.push(candidate);
-      output.set(key, list);
+      addFrontierItem(level, slot, { ...candidate, _provisionalLayer: 1, _frontierRootId: candidate.id });
+    });
+  });
+  output.forEach((items) => items.sort((aItem, bItem) => (aItem.priority ?? 100) - (bItem.priority ?? 100)));
+
+  const displayedRootPositions = new Map();
+  output.forEach((items, key) => {
+    const first = items.find((item) => item._provisionalLayer === 1);
+    if (first) addMapEntry(displayedRootPositions, first.id, positionFromKey(key));
+  });
+
+  displayedRootPositions.forEach((rootPositions, rootCandidateId) => {
+    const layer2Nodes = state.frontierCascade.filter((node) => node.is_active !== false
+      && node.root_candidate_id === rootCandidateId && !node.parent_node_id);
+    rootPositions.forEach((rootPosition) => {
+      layer2Nodes.forEach((node) => {
+        const side = node.parent_slot === 'mother' ? 1 : 0;
+        addFrontierItem(rootPosition.level + 1, rootPosition.slot * 2 + side, {
+          ...node,
+          _provisionalLayer: 2,
+          _frontierRootId: rootCandidateId,
+          _cascadeNodeId: node.id,
+        });
+      });
+    });
+  });
+  output.forEach((items) => items.sort((aItem, bItem) => (aItem.priority ?? 100) - (bItem.priority ?? 100)));
+
+  const displayedLayer2Positions = new Map();
+  output.forEach((items, key) => {
+    const first = items.find((item) => item._provisionalLayer === 2);
+    if (first?._cascadeNodeId) addMapEntry(displayedLayer2Positions, first._cascadeNodeId, positionFromKey(key));
+  });
+
+  displayedLayer2Positions.forEach((layer2Positions, parentNodeId) => {
+    const layer3Nodes = state.frontierCascade.filter((node) => node.is_active !== false
+      && node.parent_node_id === parentNodeId);
+    layer2Positions.forEach((layer2Position) => {
+      layer3Nodes.forEach((node) => {
+        const side = node.parent_slot === 'mother' ? 1 : 0;
+        addFrontierItem(layer2Position.level + 1, layer2Position.slot * 2 + side, {
+          ...node,
+          _provisionalLayer: PROVISIONAL_LAYER_LIMIT,
+          _frontierRootId: node.root_candidate_id,
+          _cascadeNodeId: node.id,
+        });
+      });
     });
   });
   output.forEach((items) => items.sort((aItem, bItem) => (aItem.priority ?? 100) - (bItem.priority ?? 100)));
@@ -624,6 +695,7 @@ function renderDetails(item) {
 function renderWedge(ns, entry, frontierItems, slot, level, innerRadius, outerRadius, startAngle, endAngle, familyMode) {
   const item = entry?.person || null;
   const candidate = !item && frontierItems?.length ? frontierItems[0] : null;
+  const provisionalLayer = candidate ? Math.min(PROVISIONAL_LAYER_LIMIT, Math.max(1, candidate._provisionalLayer || 1)) : 0;
   const group = document.createElementNS(ns, 'g');
   const path = document.createElementNS(ns, 'path');
   group.dataset.fanLevel = String(level);
@@ -641,14 +713,24 @@ function renderWedge(ns, entry, frontierItems, slot, level, innerRadius, outerRa
     group.setAttribute('tabindex', '0');
     group.setAttribute('role', 'button');
   } else if (candidate) {
-    path.setAttribute('fill', '#b8b8b8');
-    path.setAttribute('fill-opacity', '.72');
-    path.setAttribute('stroke', '#666');
-    path.setAttribute('stroke-width', '1.4');
-    path.setAttribute('stroke-dasharray', '4 3');
-    group.classList.add('research-frontier-node');
+    const frontierStyles = {
+      1: { fill: '#b8b8b8', opacity: '.72', stroke: '#666', dash: '4 3' },
+      2: { fill: '#d0d0d0', opacity: '.64', stroke: '#858585', dash: '3 3' },
+      3: { fill: '#e2e2e2', opacity: '.58', stroke: '#a0a0a0', dash: '2 3' },
+    };
+    const style = frontierStyles[provisionalLayer];
+    path.setAttribute('fill', style.fill);
+    path.setAttribute('fill-opacity', style.opacity);
+    path.setAttribute('stroke', style.stroke);
+    path.setAttribute('stroke-width', provisionalLayer === 1 ? '1.4' : '1.2');
+    path.setAttribute('stroke-dasharray', style.dash);
+    group.classList.add('research-frontier-node', `research-frontier-layer-${provisionalLayer}`);
+    group.dataset.frontierLayer = String(provisionalLayer);
     const title = document.createElementNS(ns, 'title');
-    title.textContent = [candidate.label, candidate.year_text, candidate.detail, candidate.evidence_note].filter(Boolean).join(' - ');
+    const dependency = provisionalLayer > 1
+      ? `Provisional layer ${provisionalLayer}; this depends on every unproved link closer to the documented tree.`
+      : 'Immediate research-frontier candidate; not part of the canonical tree.';
+    title.textContent = [dependency, candidate.label, candidate.year_text, candidate.detail, candidate.evidence_note].filter(Boolean).join(' - ');
     group.appendChild(title);
   } else {
     path.setAttribute('fill', '#e8e3dc');
@@ -665,7 +747,8 @@ function renderWedge(ns, entry, frontierItems, slot, level, innerRadius, outerRa
     if (years(item)) addCurvedText(group, ns, years(item), textRadius + 10, startAngle, endAngle, 'fan-date enhanced-fan-date', Math.max(4.8, size - 2), `fan-date-${level}-${slot}`);
   } else if (candidate && count <= 128) {
     addCurvedText(group, ns, candidate.label || 'Research lead', textRadius - 5, startAngle, endAngle, 'fan-label enhanced-fan-label frontier-fan-label', Math.max(5.6, size), `fan-frontier-name-${level}-${slot}`);
-    addCurvedText(group, ns, [candidate.year_text, frontierItems.length > 1 ? `+${frontierItems.length - 1} alternate` : 'FRONTIER'].filter(Boolean).join(' | '), textRadius + 10, startAngle, endAngle, 'fan-date enhanced-fan-date frontier-fan-date', Math.max(4.8, size - 1.5), `fan-frontier-date-${level}-${slot}`);
+    const frontierTag = provisionalLayer === 1 ? 'FRONTIER' : `PROVISIONAL ${provisionalLayer}`;
+    addCurvedText(group, ns, [candidate.year_text, frontierItems.length > 1 ? `+${frontierItems.length - 1} alternate` : frontierTag].filter(Boolean).join(' | '), textRadius + 10, startAngle, endAngle, 'fan-date enhanced-fan-date frontier-fan-date', Math.max(4.8, size - 1.5), `fan-frontier-date-${level}-${slot}`);
   } else if (!candidate && count <= 128) {
     addCurvedText(group, ns, '?', textRadius, startAngle, endAngle, 'fan-label enhanced-fan-label', size, `fan-unknown-${level}-${slot}`);
   }
@@ -944,6 +1027,7 @@ function resetState() {
   state.people = [];
   state.relationships = [];
   state.frontier = [];
+  state.frontierCascade = [];
   state.peopleById = new Map();
   state.parentEdgesByChild = new Map();
   state.childIdsByParent = new Map();
@@ -1038,8 +1122,14 @@ ui.contributionForm?.addEventListener('submit', async (event) => {
   }
 });
 
-document.addEventListener('genealogy:research-frontier-changed', () => {
-  if (state.loaded) scheduleRender();
+document.addEventListener('genealogy:research-frontier-changed', async () => {
+  if (!state.loaded || !state.session || state.profile?.status !== 'approved') return;
+  try {
+    await loadFamilyData(true);
+    scheduleRender();
+  } catch (error) {
+    showArchiveLoadError(error);
+  }
 });
 
 document.addEventListener('genealogy:tree-suggestions-updated', async () => {
