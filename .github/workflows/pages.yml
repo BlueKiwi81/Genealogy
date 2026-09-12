@@ -103,11 +103,11 @@ jobs:
           index.write_text(text, encoding='utf-8')
           PY
 
-          # Controlled trial: the source renderer retains its conservative six-ring
-          # development cap, while the published family site may render up to ten
-          # ancestor rings when the user explicitly asks for all available generations.
-          # The normal default remains five rings.
-          sed -i 's/const RENDER_DEPTH_CAP = 6;/const RENDER_DEPTH_CAP = 10;/' _site/app-v3.js
+          # Controlled trial: the source renderer retains a conservative development
+          # cap, while the published family site may render up to ten ancestor rings
+          # when the user explicitly asks for all available generations. The normal
+          # default remains five rings.
+          sed -E -i 's/const RENDER_DEPTH_CAP = (6|7);/const RENDER_DEPTH_CAP = 10;/' _site/app-v3.js
           grep -q 'const RENDER_DEPTH_CAP = 10;' _site/app-v3.js
 
           # Publish map v2 as an explicit browser asset and switch the dynamic map
@@ -149,6 +149,9 @@ jobs:
               raise SystemExit('Expected local research examples were not found exactly once in each language.')
           research.write_text(text, encoding='utf-8')
           PY
+
+          # Fail early on syntax errors in the transformed browser entry point.
+          node --check _site/app-v3.js
 
           # Privacy guard: fail deployment if source-only material somehow enters the
           # static artifact. Browser code and styles are expected; SQL, Markdown and
